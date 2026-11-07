@@ -1,0 +1,2191 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProTrack - Dark Production Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        darkbg: '#090d16',
+                        darkcard: '#111827',
+                        darkborder: '#1f2937',
+                        cyanaccent: '#06b6d4',
+                        purpleaccent: '#8b5cf6',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for dark view */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+    </style>
+</head>
+<body class="h-full font-sans text-slate-200 antialiased flex flex-col md:flex-row overflow-hidden bg-slate-950">
+
+    <div id="shared-loading-overlay" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950">
+        <div class="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900 px-5 py-4 text-sm font-semibold text-slate-200 shadow-xl">
+            <i class="fa-solid fa-arrows-rotate animate-spin text-cyan-400"></i>
+            <span>Connecting to shared production data…</span>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Mobile Navigation Overlay Drawer -->
+    <div id="mobile-sidebar-backdrop" onclick="toggleMobileSidebar()" class="fixed inset-0 z-30 bg-slate-950/80 backdrop-blur-sm hidden md:hidden transition-opacity"></div>
+
+    <!-- Sidebar Navigation -->
+    <aside id="app-sidebar" class="fixed md:static inset-y-0 left-0 w-72 md:w-64 bg-slate-900 border-r border-slate-800 text-slate-300 flex-shrink-0 flex flex-col justify-between z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
+        <div>
+            <!-- App Brand Header -->
+            <div class="h-16 flex items-center justify-between px-4 sm:px-6 bg-slate-950 border-b border-slate-800 text-white font-bold text-xl tracking-wider">
+                <div class="flex items-center gap-3 min-w-0">
+                    <!-- Custom Team Logo Upload Container -->
+                    <div class="relative group flex-shrink-0">
+                        <div id="team-logo-display" onclick="triggerLogoUpload()" class="h-9 w-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-cyan-400 overflow-hidden cursor-pointer shadow-md hover:border-cyan-400 transition" title="Click to upload team logo/picture">
+                            <i class="fa-solid fa-wrench text-sm"></i>
+                        </div>
+                        <button onclick="triggerLogoUpload()" class="admin-only hidden absolute -bottom-1 -right-1 bg-cyan-500 text-slate-950 w-4 h-4 rounded-full flex items-center justify-center text-[9px] shadow" title="Upload Picture">
+                            <i class="fa-solid fa-camera"></i>
+                        </button>
+                    </div>
+                    <span class="text-xs sm:text-sm font-extrabold tracking-wide text-slate-100 truncate">Eastern Repair <span class="text-cyan-400">Team</span></span>
+                </div>
+                <!-- Hidden file input for team logo -->
+                <input type="file" id="team-logo-input" accept="image/*" onchange="handleTeamLogoUpload(this)" class="hidden">
+                <!-- Close Mobile Sidebar Button -->
+                <button onclick="toggleMobileSidebar()" class="md:hidden text-slate-400 hover:text-white p-2">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Navigation Links -->
+            <nav class="p-4 space-y-1">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 bg-cyan-500 text-slate-950 font-semibold shadow-md shadow-cyan-500/10">
+                    <i class="fa-solid fa-chart-pie w-5 text-center"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button onclick="switchTab('records')" id="nav-records" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-list-check w-5 text-center"></i>
+                    <span>Production Logs</span>
+                </button>
+                <button onclick="switchTab('workers')" id="nav-workers" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-users w-5 text-center"></i>
+                    <span>Personnel & Duty Days</span>
+                </button>
+                <button onclick="switchTab('directory')" id="nav-directory" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-address-card w-5 text-center"></i>
+                    <span>Personnel Info</span>
+                </button>
+                <button onclick="switchTab('fleet')" id="nav-fleet" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-truck-front w-5 text-center"></i>
+                    <span>Fleet Data</span>
+                </button>
+                <button onclick="switchTab('updates')" id="nav-updates" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-bullhorn w-5 text-center"></i>
+                    <span>Advance Updates</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Sidebar Footer Status -->
+        <div class="p-4 border-t border-slate-800 text-xs text-slate-500 flex items-center justify-between">
+            <span class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                System Dark Live
+            </span>
+            <span>v3.1.0</span>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-950 w-full">
+        
+        <!-- Top App Bar with Mobile Menu Toggle -->
+        <header class="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 sm:px-6 flex-shrink-0">
+            <div class="flex items-center gap-3">
+                <!-- Hamburger Menu Button for Mobile -->
+                <button onclick="toggleMobileSidebar()" class="md:hidden text-slate-300 hover:text-white p-2 rounded-xl bg-slate-800 border border-slate-700">
+                    <i class="fa-solid fa-bars text-base"></i>
+                </button>
+                <h1 id="page-title" class="text-base sm:text-xl font-bold text-slate-100 truncate">Dashboard Overview</h1>
+                <div id="shared-sync-status" class="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-2 py-1.5 text-[11px] font-semibold text-slate-400 sm:px-3" aria-live="polite">
+                    <span class="h-1.5 w-1.5 rounded-full bg-current"></span>
+                    <span data-sync-label class="hidden sm:inline">Connecting to shared storage…</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- Admin Security Lock Switch Button -->
+                <button id="admin-toggle-btn" onclick="toggleAdminMode()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/40 text-xs sm:text-sm font-semibold px-3 py-2 sm:px-4 sm:py-2 rounded-xl flex items-center gap-2 shadow-sm transition">
+                    <i id="admin-lock-icon" class="fa-solid fa-lock"></i>
+                    <span id="admin-toggle-text" class="hidden sm:inline">View Only Mode</span>
+                </button>
+                <button onclick="exportToCSV()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold px-3 py-2 sm:px-4 sm:py-2 rounded-xl flex items-center gap-2 shadow-sm transition">
+                    <i class="fa-solid fa-file-csv"></i>
+                    <span class="hidden sm:inline">Export CSV</span>
+                </button>
+                <button onclick="openModal('production-modal')" class="admin-only hidden bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs sm:text-sm font-bold px-3 py-2 sm:px-4 sm:py-2 rounded-xl flex items-center gap-2 shadow-sm shadow-cyan-500/20 transition">
+                    <i class="fa-solid fa-plus"></i>
+                    <span class="hidden sm:inline">Log Production</span>
+                </button>
+                <button onclick="openModal('worker-modal')" class="admin-only hidden bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-semibold px-3 py-2 sm:px-4 sm:py-2 rounded-xl flex items-center gap-2 transition border border-slate-700">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span class="hidden sm:inline">Add Worker</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Dynamic Content Scroll View -->
+        <div class="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+
+            <section id="shared-storage-notice" class="hidden rounded-2xl border border-amber-700/60 bg-amber-950/30 p-4 sm:p-5 shadow-lg" aria-live="polite">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="min-w-0">
+                        <h2 class="text-sm font-bold text-amber-200">Shared production data</h2>
+                        <p id="shared-storage-message" class="mt-1 text-xs leading-relaxed text-amber-100/80"></p>
+                    </div>
+                    <div class="flex flex-wrap gap-2 sm:flex-shrink-0">
+                        <button id="shared-storage-import-button" onclick="migrateLocalDashboardData()" class="hidden rounded-xl bg-amber-400 px-3 py-2 text-xs font-bold text-slate-950 hover:bg-amber-300">Import this device’s saved data</button>
+                        <button id="shared-storage-reload-button" onclick="reloadSharedDashboard()" class="hidden rounded-xl border border-amber-700 px-3 py-2 text-xs font-semibold text-amber-100 hover:bg-amber-900/40">Reload shared data</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- GLOBAL DATE FILTER / CALENDAR NAVIGATOR -->
+            <div class="bg-slate-900 border border-slate-800 p-3 sm:p-4 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-lg">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 sm:p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-cyan-400 flex-shrink-0">
+                        <i class="fa-solid fa-calendar-days text-base sm:text-lg"></i>
+                    </div>
+                    <div>
+                        <span class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400 block">Active Date View</span>
+                        <span id="selected-date-display" class="text-xs sm:text-sm font-bold text-slate-100">All Dates (Historical)</span>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <button onclick="navigateDate(-1)" class="flex-1 sm:flex-none px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-chevron-left text-[10px]"></i> Prev
+                    </button>
+                    <input type="date" id="global-date-picker" onchange="handleDateSelect(this.value)" class="bg-slate-950 border border-slate-800 text-slate-200 px-2.5 py-1.5 rounded-xl text-xs font-medium focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                    <button onclick="navigateDate(1)" class="flex-1 sm:flex-none px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1">
+                        Next <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                    </button>
+                    <button onclick="setTodayDate()" class="px-2.5 py-1.5 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 rounded-xl text-xs font-bold transition">
+                        Today
+                    </button>
+                    <button onclick="clearDateFilter()" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition">
+                        Show All
+                    </button>
+                </div>
+            </div>
+
+            <!-- TAB 1: DASHBOARD VIEW -->
+            <div id="tab-dashboard" class="tab-content space-y-4 sm:space-y-6">
+                <!-- KPI Summary Cards Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
+                    <!-- Total Installs -->
+                    <div class="bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-800 shadow-sm flex items-center gap-2.5">
+                        <div class="p-2.5 sm:p-3 bg-cyan-950 border border-cyan-800 text-cyan-400 rounded-xl flex-shrink-0">
+                            <i class="fa-solid fa-download text-base sm:text-xl"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[9px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider truncate">Total Installs</p>
+                            <h3 id="stat-total-installs" class="text-base sm:text-xl font-bold text-slate-100">0</h3>
+                            <p id="stat-avg-installs" class="text-[9px] sm:text-[11px] text-slate-500 truncate">Avg 0 / log</p>
+                        </div>
+                    </div>
+                    <!-- Total Restored -->
+                    <div class="bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-800 shadow-sm flex items-center gap-2.5">
+                        <div class="p-2.5 sm:p-3 bg-purple-950 border border-purple-800 text-purple-400 rounded-xl flex-shrink-0">
+                            <i class="fa-solid fa-rotate-left text-base sm:text-xl"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[9px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider truncate">Total Restored</p>
+                            <h3 id="stat-total-restored" class="text-base sm:text-xl font-bold text-slate-100">0</h3>
+                            <p id="stat-avg-restored" class="text-[9px] sm:text-[11px] text-slate-500 truncate">Avg 0 / log</p>
+                        </div>
+                    </div>
+                    <!-- Daily Attendance -->
+                    <div class="bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-800 shadow-sm flex items-center gap-2.5">
+                        <div class="p-2.5 sm:p-3 bg-teal-950 border border-teal-800 text-teal-400 rounded-xl flex-shrink-0">
+                            <i class="fa-solid fa-clipboard-user text-base sm:text-xl"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[9px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider truncate">Attendance</p>
+                            <h3 id="stat-total-attendance" class="text-base sm:text-xl font-bold text-slate-100 truncate">0 Present</h3>
+                            <p id="stat-attendance-rate" class="text-[9px] sm:text-[11px] text-slate-500 truncate">100% Rate</p>
+                        </div>
+                    </div>
+                    <!-- Total Duty Days -->
+                    <div class="bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-800 shadow-sm flex items-center gap-2.5">
+                        <div class="p-2.5 sm:p-3 bg-indigo-950 border border-indigo-800 text-indigo-400 rounded-xl flex-shrink-0">
+                            <i class="fa-solid fa-calendar-check text-base sm:text-xl"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[9px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider truncate">Duty Days</p>
+                            <h3 id="stat-duty-days" class="text-base sm:text-xl font-bold text-slate-100">0</h3>
+                            <p id="stat-duty-desc" class="text-[9px] sm:text-[11px] text-slate-500 truncate">Active days</p>
+                        </div>
+                    </div>
+                    <!-- Active Personnel -->
+                    <div class="bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-800 shadow-sm flex items-center gap-2.5">
+                        <div class="p-2.5 sm:p-3 bg-emerald-950 border border-emerald-800 text-emerald-400 rounded-xl flex-shrink-0">
+                            <i class="fa-solid fa-users-gear text-base sm:text-xl"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[9px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider truncate">Active Workers</p>
+                            <h3 id="stat-active-workers" class="text-base sm:text-xl font-bold text-slate-100">0</h3>
+                            <p class="text-[9px] sm:text-[11px] text-slate-500 truncate">Staff</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TECHNICIAN DUTY & ATTENDANCE DASHBOARD BREAKDOWN CARD -->
+                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-800">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                                <i class="fa-solid fa-chart-column text-indigo-400"></i> Personnel Duty & Attendance Graph
+                            </h2>
+                            <p class="text-xs text-slate-400">Stacked attendance breakdown (Present, Absent, Rest Day, Vacation Leave, Sick Leave) per person</p>
+                        </div>
+                        <span class="text-xs bg-indigo-950 text-indigo-300 font-bold px-3 py-1 rounded-full border border-indigo-800">
+                            Stacked Attendance View
+                        </span>
+                    </div>
+
+                    <div class="h-80 sm:h-96">
+                        <canvas id="chart-duty-attendance"></canvas>
+                    </div>
+                </div>
+
+                <!-- Interactive Charts Section -->
+                <div class="grid grid-cols-1 gap-6">
+                    <!-- Daily Trend Line Chart -->
+                    <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-sm">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-base font-bold text-slate-100">Daily Installs vs Restored Trend</h2>
+                            <span class="text-xs text-slate-400">Daily Aggregates</span>
+                        </div>
+                        <div class="h-64 sm:h-72">
+                            <canvas id="chart-daily-trend"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Worker Performance Bar Chart -->
+                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-base font-bold text-slate-100">Worker Activity Breakdown (Installs & Restored)</h2>
+                        <span class="text-xs text-slate-400">Per Personnel Totals</span>
+                    </div>
+                    <div class="h-64 sm:h-72">
+                        <canvas id="chart-worker-output"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: RECORDS / DATA TABLE VIEW -->
+            <div id="tab-records" class="tab-content space-y-4 hidden">
+                <!-- Table Controls (Filter & Search) -->
+                <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+                    <!-- Search Input -->
+                    <div class="relative w-full md:w-72">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+                        <input type="text" id="table-search" placeholder="Search worker, notes..." oninput="renderTable()" class="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition">
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+                        <select id="filter-status" onchange="renderTable()" class="bg-slate-950 border border-slate-800 text-sm text-slate-300 px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                            <option value="ALL">All Statuses</option>
+                            <option value="Present">Present</option>
+                            <option value="Absent">Absent</option>
+                            <option value="Rest Day">Rest Day</option>
+                            <option value="Vacation Leave">Vacation Leave</option>
+                            <option value="Sick Leave">Sick Leave</option>
+                        </select>
+                        <select id="filter-worker" onchange="renderTable()" class="bg-slate-950 border border-slate-800 text-sm text-slate-300 px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                            <option value="ALL">All Workers</option>
+                        </select>
+                        <button onclick="clearAllData()" class="text-xs text-red-400 hover:text-red-300 font-semibold px-2 py-1 rounded hover:bg-red-950/50 transition" title="Clear all data">
+                            <i class="fa-solid fa-trash-arrow-up mr-1"></i> Reset Data
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Table Wrapper -->
+                <div class="bg-slate-900 rounded-2xl border border-slate-800 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-950 text-slate-400 border-b border-slate-800 font-semibold text-xs tracking-wider uppercase">
+                                    <th class="py-3.5 px-4 cursor-pointer hover:text-slate-200" onclick="sortTable('date')">Date <i class="fa-solid fa-sort text-xs ml-1"></i></th>
+                                    <th class="py-3.5 px-4 cursor-pointer hover:text-slate-200" onclick="sortTable('workerName')">Worker <i class="fa-solid fa-sort text-xs ml-1"></i></th>
+                                    <th class="py-3.5 px-4 cursor-pointer hover:text-slate-200 text-teal-400" onclick="sortTable('attendance')">Attendance <i class="fa-solid fa-sort text-xs ml-1"></i></th>
+                                    <th class="py-3.5 px-4 cursor-pointer hover:text-slate-200 text-cyan-400" onclick="sortTable('installs')">Installs <i class="fa-solid fa-sort text-xs ml-1"></i></th>
+                                    <th class="py-3.5 px-4 cursor-pointer hover:text-slate-200 text-purple-400" onclick="sortTable('restored')">Restored <i class="fa-solid fa-sort text-xs ml-1"></i></th>
+                                    <th class="py-3.5 px-4 cursor-pointer hover:text-slate-200" onclick="sortTable('totalUnits')">Total Combined <i class="fa-solid fa-sort text-xs ml-1"></i></th>
+                                    <th class="py-3.5 px-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="records-tbody" class="divide-y divide-slate-800 text-slate-300">
+                                <!-- Dynamic Rows Inserted Here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Empty State Marker -->
+                    <div id="table-empty" class="hidden p-8 text-center text-slate-500">
+                        <i class="fa-solid fa-folder-open text-4xl mb-2 text-slate-700"></i>
+                        <p class="text-sm">No daily log records match your filter criteria.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: WORKER MANAGEMENT -->
+            <div id="tab-workers" class="tab-content space-y-4 hidden">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-100">Repair Team</h2>
+                        <p class="text-xs text-slate-400">Set each repair-team member’s daily status here; it is saved to Production Logs and reflected on the dashboard</p>
+                    </div>
+                    <button onclick="openModal('worker-modal')" class="admin-only hidden bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition">
+                        <i class="fa-solid fa-user-plus"></i> New Worker
+                    </button>
+                </div>
+                <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                        <label for="personnel-duty-date" class="block text-xs font-semibold text-slate-300">Attendance date</label>
+                        <p class="text-[11px] text-slate-500 mt-1">This date is shared with the Production Logs and Dashboard filters.</p>
+                    </div>
+                    <input type="date" id="personnel-duty-date" onchange="handlePersonnelDutyDateChange(this.value)" class="w-full sm:w-auto bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                </div>
+                <div id="personnel-attendance-summary" class="bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-sm">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2"><i class="fa-solid fa-chart-pie text-cyan-400"></i> Attendance Totals</h3>
+                            <p class="text-[11px] text-slate-500 mt-1">Repair-team person-days by status across the current date filter</p>
+                        </div>
+                        <span id="personnel-attendance-summary-scope" class="text-[10px] text-slate-400"></span>
+                    </div>
+                    <div id="personnel-attendance-summary-values" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3"></div>
+                </div>
+
+                <div id="personnel-monthly-report" class="bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-800 shadow-sm">
+                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-100 flex items-center gap-2"><i class="fa-solid fa-calendar-days text-cyan-400"></i> Monthly Personnel Attendance</h3>
+                            <p class="text-[11px] text-slate-500 mt-1">Present days count as Duty Days; other statuses are listed separately.</p>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <input type="month" id="personnel-report-month" onchange="renderMonthlyAttendanceReport()" class="bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-xs focus:ring-2 focus:ring-cyan-500 focus:outline-none" aria-label="Attendance report month">
+                            <button type="button" onclick="exportMonthlyAttendanceCSV()" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-3 py-2 rounded-xl flex items-center justify-center gap-2 transition"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto rounded-xl border border-slate-800">
+                        <table class="w-full min-w-[760px] text-left text-xs">
+                            <thead class="bg-slate-950 text-slate-400 uppercase text-[9px] tracking-wider">
+                                <tr><th class="p-3">Repair Team Member</th><th class="p-3 text-center">Present / Duty Days</th><th class="p-3 text-center">Absent</th><th class="p-3 text-center">Rest Day</th><th class="p-3 text-center">Vacation Leave</th><th class="p-3 text-center">Sick Leave</th><th class="p-3 text-center">Total Marked</th></tr>
+                            </thead>
+                            <tbody id="personnel-monthly-report-body" class="divide-y divide-slate-800 text-slate-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- All Technicians Consolidated under Repair Team Grid -->
+                <div id="workers-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Dynamic Worker Cards Inserted Here -->
+                </div>
+            </div>
+
+            <!-- TAB 4: PERSONNEL DIRECTORY & INFORMATION -->
+            <div id="tab-directory" class="tab-content space-y-4 hidden">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-100">Personnel Profiles & Photo Directory</h2>
+                        <p class="text-xs text-slate-400">View team profiles and use Admin Mode to upload a photo for each person</p>
+                    </div>
+                    <button onclick="openModal('worker-modal')" class="admin-only hidden bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition">
+                        <i class="fa-solid fa-user-plus"></i> Add / Edit Info
+                    </button>
+                </div>
+
+                <div id="directory-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
+                    <!-- Dynamic Personnel Cards Inserted Here -->
+                </div>
+                <input type="file" id="worker-photo-upload-input" accept="image/*" onchange="handleWorkerPhotoUpload(this)" class="hidden" aria-label="Upload a personnel photo">
+            </div>
+
+            <!-- TAB 5: FLEET DATA & VEHICLE DIRECTORY -->
+            <div id="tab-fleet" class="tab-content space-y-4 hidden">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-100">Fleet Data & Repair Vehicles</h2>
+                        <p class="text-xs text-slate-400">Manage vehicle details, assigned technicians, fuel types, and maintenance schedules</p>
+                    </div>
+                    <button onclick="openModal('fleet-modal')" class="admin-only hidden bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition">
+                        <i class="fa-solid fa-plus"></i> Add Vehicle
+                    </button>
+                </div>
+
+                <div id="fleet-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Dynamic Fleet Cards Rendered Here -->
+                </div>
+            </div>
+
+            <!-- TAB 6: ADVANCE TEAM UPDATES & ANNOUNCEMENTS -->
+            <div id="tab-updates" class="tab-content space-y-4 hidden">
+                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-slate-800">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                <i class="fa-solid fa-bullhorn text-cyan-400"></i> Advance Team Updates & Announcements
+                            </h2>
+                            <p class="text-xs text-slate-400">Post upcoming schedule changes, notices, and operational announcements for the field team</p>
+                        </div>
+                        <button onclick="openModal('update-modal')" class="admin-only hidden bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition">
+                            <i class="fa-solid fa-plus"></i> Post Update
+                        </button>
+                    </div>
+
+                    <div id="updates-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Dynamic Updates Rendered Here -->
+                    </div>
+                </div>
+
+                <!-- SATURDAY - SUNDAY WEEKEND SCHEDULE SECTION -->
+                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-slate-800">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2.5 rounded-xl bg-purple-950 border border-purple-800 text-purple-400">
+                                <i class="fa-solid fa-camera-retro text-lg"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                    Saturday - Sunday Weekend Schedule
+                                </h2>
+                                <p class="text-xs text-slate-400">Weekend schedule snapshots organized with Saturday on the Left and Sunday on the Right</p>
+                            </div>
+                        </div>
+                        <button onclick="openModal('weekend-schedule-modal')" class="admin-only hidden bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm shadow-purple-600/20 transition">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Upload Weekend Photo
+                        </button>
+                    </div>
+
+                    <!-- Side-by-Side Day Header Indicators -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-center font-extrabold text-sm tracking-wider uppercase">
+                        <div class="py-2.5 px-4 rounded-xl bg-purple-950/60 border border-purple-800/80 text-purple-300 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-calendar-day"></i> Saturday Schedule
+                        </div>
+                        <div class="py-2.5 px-4 rounded-xl bg-cyan-950/60 border border-cyan-800/80 text-cyan-300 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-calendar-day"></i> Sunday Schedule
+                        </div>
+                    </div>
+
+                    <!-- Weekend Schedule Photo Grid View (Side-by-Side Saturday & Sunday Columns) -->
+                    <div id="weekend-schedule-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Saturday column (Left) & Sunday column (Right) rendered dynamically -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- LOG PRODUCTION MODAL -->
+    <div id="production-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div class="px-6 py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
+                <h3 class="text-base font-bold text-slate-100"><i class="fa-solid fa-pen-to-square text-cyan-400 mr-2"></i>Log Daily Production</h3>
+                <button onclick="closeModal('production-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="production-form" onsubmit="handleSaveProduction(event)" class="p-6 space-y-4">
+                <input type="hidden" id="edit-log-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Date</label>
+                    <input type="date" id="log-date" required class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Worker</label>
+                    <select id="log-worker" required class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Attendance Status</label>
+                    <select id="log-attendance" required onchange="handleAttendanceChange(this.value)" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                        <option value="Present">Present</option>
+                        <option value="Absent">Absent</option>
+                        <option value="Rest Day">Rest Day</option>
+                        <option value="Vacation Leave">Vacation Leave</option>
+                        <option value="Sick Leave">Sick Leave</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Installs</label>
+                        <input type="number" min="0" id="log-installs" value="0" required class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Restored</label>
+                        <input type="number" min="0" id="log-restored" value="0" required class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Notes / Remarks</label>
+                    <textarea id="log-notes" rows="2" placeholder="Optional comments..." class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none"></textarea>
+                </div>
+                <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
+                    <button type="button" onclick="closeModal('production-modal')" class="px-4 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-xl text-sm font-semibold transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-cyan-500 text-slate-950 hover:bg-cyan-400 rounded-xl text-sm font-bold shadow-md shadow-cyan-500/20 transition">Save Log</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- WORKER MODAL -->
+    <div id="worker-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div class="px-6 py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
+                <h3 class="text-base font-bold text-slate-100"><i class="fa-solid fa-user-plus text-cyan-400 mr-2"></i>Worker Profile Details</h3>
+                <button onclick="closeModal('worker-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="worker-form" onsubmit="handleSaveWorker(event)" class="p-6 space-y-4">
+                <input type="hidden" id="edit-worker-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Full Name</label>
+                    <input type="text" id="worker-name" required placeholder="e.g. Amnel Mapait" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Job Role / Title</label>
+                    <input type="text" id="worker-role" required placeholder="e.g. Lead Technician" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Department / Team</label>
+                    <select id="worker-dept" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                        <option value="Repair Team">Repair Team</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Profile Photo URL</label>
+                    <input type="url" id="worker-photo" placeholder="https://..." class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                </div>
+                <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
+                    <button type="button" onclick="closeModal('worker-modal')" class="px-4 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-xl text-sm font-semibold transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-cyan-500 text-slate-950 hover:bg-cyan-400 rounded-xl text-sm font-bold shadow-md shadow-cyan-500/20 transition">Save Worker</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- PERSONNEL PHOTO CROP MODAL -->
+    <div id="worker-photo-crop-modal" role="dialog" aria-modal="true" aria-labelledby="worker-photo-crop-title" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-2xl">
+            <div class="px-5 py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
+                <h3 id="worker-photo-crop-title" class="text-base font-bold text-slate-100"><i class="fa-solid fa-crop-simple text-cyan-400 mr-2"></i>Crop and Resize Photo</h3>
+                <button type="button" onclick="cancelWorkerPhotoCrop()" class="text-slate-400 hover:text-white" aria-label="Cancel photo crop"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-5 sm:p-6 space-y-4">
+                <div>
+                    <p id="worker-photo-crop-person" class="text-sm font-semibold text-slate-100"></p>
+                    <p class="text-xs text-slate-400 mt-1">Drag the photo to position it. Use the slider to zoom within the square crop.</p>
+                </div>
+                <div id="worker-photo-crop-viewport" class="relative mx-auto overflow-hidden rounded-xl border border-slate-700 bg-slate-950 cursor-grab active:cursor-grabbing touch-none select-none" style="width:min(78vw,360px);height:min(78vw,360px);touch-action:none" onpointerdown="startWorkerPhotoCropDrag(event)" onpointermove="moveWorkerPhotoCropDrag(event)" onpointerup="endWorkerPhotoCropDrag(event)" onpointercancel="endWorkerPhotoCropDrag(event)">
+                    <img id="worker-photo-crop-image" src="" alt="Position the personnel photo inside the square crop" class="absolute max-w-none pointer-events-none select-none" draggable="false">
+                    <div class="absolute inset-0 rounded-xl border-2 border-cyan-400/90 pointer-events-none"></div>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <label for="worker-photo-crop-zoom" class="font-semibold text-slate-300">Zoom</label>
+                        <span class="text-slate-500">1×–3×</span>
+                    </div>
+                    <input id="worker-photo-crop-zoom" type="range" min="1" max="3" step="0.01" value="1" oninput="zoomWorkerPhotoCrop(this.value)" aria-label="Zoom the personnel photo" class="w-full accent-cyan-400">
+                </div>
+                <div class="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-slate-800">
+                    <button type="button" onclick="resetWorkerPhotoCrop()" class="px-3 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-xl text-sm font-semibold transition"><i class="fa-solid fa-rotate-left mr-1"></i>Reset Crop</button>
+                    <div class="flex justify-end gap-2">
+                        <button type="button" onclick="cancelWorkerPhotoCrop()" class="px-3 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-xl text-sm font-semibold transition">Cancel</button>
+                        <button type="button" onclick="saveWorkerPhotoCrop()" class="px-4 py-2 bg-cyan-500 text-slate-950 hover:bg-cyan-400 rounded-xl text-sm font-bold shadow-md shadow-cyan-500/20 transition"><i class="fa-solid fa-check mr-1"></i>Use Photo</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FLEET MODAL -->
+    <div id="fleet-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div class="px-6 py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
+                <h3 class="text-base font-bold text-slate-100"><i class="fa-solid fa-truck-front text-cyan-400 mr-2"></i>Fleet Vehicle Details</h3>
+                <button onclick="closeModal('fleet-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="fleet-form" onsubmit="handleSaveFleet(event)" class="p-6 space-y-4">
+                <input type="hidden" id="edit-fleet-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Vehicle Designation / Name</label>
+                    <input type="text" id="fleet-name" required placeholder="e.g. Service Truck A" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Plate Number</label>
+                    <input type="text" id="fleet-plate" required placeholder="e.g. ABC-1234" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Vehicle Type</label>
+                        <input type="text" id="fleet-type" placeholder="e.g. Utility Van" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Fuel Type</label>
+                        <select id="fleet-fuel" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                            <option value="Diesel">Diesel</option>
+                            <option value="Unleaded">Unleaded</option>
+                            <option value="Electric">Electric</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Team Leader</label>
+                    <input type="text" id="fleet-leader" placeholder="e.g. Amnel Mapait" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Status</label>
+                    <select id="fleet-status" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                        <option value="Active">Active / On Road</option>
+                        <option value="Standby">Standby / Available</option>
+                        <option value="In Maintenance">In Maintenance</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
+                    <button type="button" onclick="closeModal('fleet-modal')" class="px-4 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-xl text-sm font-semibold transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-cyan-500 text-slate-950 hover:bg-cyan-400 rounded-xl text-sm font-bold shadow-md shadow-cyan-500/20 transition">Save Vehicle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- UPDATE MODAL -->
+    <div id="update-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div class="px-6 py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
+                <h3 class="text-base font-bold text-slate-100"><i class="fa-solid fa-bullhorn text-cyan-400 mr-2"></i>Post Announcement</h3>
+                <button onclick="closeModal('update-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="update-form" onsubmit="handleSaveUpdate(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Title</label>
+                    <input type="text" id="update-title" required placeholder="e.g. Maintenance Notice" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Content / Details</label>
+                    <textarea id="update-content" rows="3" required placeholder="Announcement details..." class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none"></textarea>
+                </div>
+                <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
+                    <button type="button" onclick="closeModal('update-modal')" class="px-4 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-xl text-sm font-semibold transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-cyan-500 text-slate-950 hover:bg-cyan-400 rounded-xl text-sm font-bold shadow-md shadow-cyan-500/20 transition">Post Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- WEEKEND SCHEDULE MODAL -->
+    <div id="weekend-schedule-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div class="px-6 py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
+                <h3 class="text-base font-bold text-slate-100"><i class="fa-solid fa-camera-retro text-purple-400 mr-2"></i>Upload Weekend Schedule Photo</h3>
+                <button onclick="closeModal('weekend-schedule-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="weekend-schedule-form" onsubmit="handleSaveWeekendSchedule(event)" class="p-6 space-y-4">
+                <input type="hidden" id="edit-weekend-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Day</label>
+                    <select id="weekend-day" required class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                        <option value="Saturday">Saturday</option>
+                        <option value="Sunday">Sunday</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Schedule Photo / Image</label>
+                    <input type="file" id="weekend-image-input" accept="image/*" onchange="previewWeekendImage(this)" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                    <input type="hidden" id="weekend-image-data">
+                </div>
+                <div id="weekend-image-preview-container" class="hidden border border-slate-800 rounded-xl p-2 bg-slate-950 flex flex-col items-center gap-2">
+                    <img id="weekend-image-preview" src="" class="max-h-48 rounded-lg object-contain">
+                    <button type="button" onclick="clearWeekendImagePreview()" class="text-xs text-red-400 hover:text-red-300">Remove Photo</button>
+                </div>
+                <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
+                    <button type="button" onclick="closeModal('weekend-schedule-modal')" class="px-4 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-xl text-sm font-semibold transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-purple-600 text-white hover:bg-purple-500 rounded-xl text-sm font-bold shadow-md shadow-purple-600/20 transition">Save Photo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ROLE SIGN-IN MODAL -->
+    <div id="admin-passcode-modal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
+            <div class="px-6 py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
+                <h3 class="text-base font-bold text-amber-400 flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved"></i> Sign in to ProTrack
+                </h3>
+                <button onclick="closeModal('admin-passcode-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="admin-passcode-form" onsubmit="handleVerifyPasscode(event)" class="p-6 space-y-4">
+                <div>
+                    <label for="protrack-login-role" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Role</label>
+                    <select id="protrack-login-role" class="w-full bg-slate-950 border border-slate-800 text-slate-100 px-3 py-2.5 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                        <option value="admin">Administrator · Full access</option>
+                        <option value="team_lead">Team Lead · Attendance only</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="admin-passcode-input" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Passcode</label>
+                    <input type="password" id="admin-passcode-input" required minlength="12" autocomplete="current-password" placeholder="Enter your role passcode" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-center tracking-widest text-lg font-bold px-3 py-2.5 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+                <p class="text-[11px] text-slate-500">Workers and other visitors can view the dashboard without signing in.</p>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeModal('admin-passcode-modal')" class="px-4 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-xl text-xs font-semibold transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-amber-500 text-slate-950 hover:bg-amber-400 rounded-xl text-xs font-bold transition">Sign In</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT APPLICATION LOGIC -->
+    <script>
+        // CORE APPLICATION STATE
+        let isAdminMode = false;
+        let isTeamLeadMode = false;
+        let currentUserRole = 'worker';
+
+        let teamLogo = localStorage.getItem('protrack_team_logo') || '';
+        let workerPhotoCropState = null;
+
+        // Initial Seed Workers Data - All personnel assigned to Repair Team (Photo URLs cleared for manual upload)
+        let workers = JSON.parse(localStorage.getItem('protrack_workers')) || [
+            { id: 'w1', name: 'Amnel Mapait', role: 'Lead Technician', dept: 'Repair Team', photo: '' },
+            { id: 'w2', name: 'Charles Jim Castillo', role: 'Field Technician', dept: 'Repair Team', photo: '' },
+            { id: 'w3', name: 'Christian John Ramos', role: 'Field Technician', dept: 'Repair Team', photo: '' },
+            { id: 'w4', name: 'Cliford Javien', role: 'Repair Specialist', dept: 'Repair Team', photo: '' },
+            { id: 'w5', name: 'Elmer Evangelista', role: 'Field Technician', dept: 'Repair Team', photo: '' },
+            { id: 'w6', name: 'Gervie Hernandez', role: 'Repair Specialist', dept: 'Repair Team', photo: '' },
+            { id: 'w7', name: 'James Patrick Espiritu', role: 'Field Technician', dept: 'Repair Team', photo: '' },
+            { id: 'w8', name: 'Jan Michael Pajarito', role: 'System Inspector', dept: 'Repair Team', photo: '' },
+            { id: 'w9', name: 'Jayson Bascos', role: 'Field Technician', dept: 'Repair Team', photo: '' },
+            { id: 'w10', name: 'John Michael Sison', role: 'Repair Specialist', dept: 'Repair Team', photo: '' },
+            { id: 'w11', name: 'John Owen Ancheta', role: 'Field Technician', dept: 'Repair Team', photo: '' },
+            { id: 'w12', name: 'John Paul Siobal', role: 'Field Technician', dept: 'Repair Team', photo: '' },
+            { id: 'w13', name: 'Jose Mendi Jr.', role: 'Repair Tech', dept: 'Repair Team', photo: '' },
+            { id: 'w14', name: 'Manny Salisi', role: 'Repair Tech', dept: 'Repair Team', photo: '' },
+            { id: 'w15', name: 'Marsan Salvador', role: 'Repair Tech', dept: 'Repair Team', photo: '' },
+            { id: 'w16', name: 'Nathaniel Clemente', role: 'Repair Tech', dept: 'Repair Team', photo: '' },
+            { id: 'w17', name: 'Neil Abon', role: 'Repair Tech', dept: 'Repair Team', photo: '' },
+            { id: 'w18', name: 'Raymart John Candelario', role: 'Repair Tech', dept: 'Repair Team', photo: '' },
+            { id: 'w19', name: 'Roger Erick Viernes', role: 'Repair Tech', dept: 'Repair Team', photo: '' },
+            { id: 'w20', name: 'Victor Duco Jr.', role: 'Repair Tech', dept: 'Repair Team', photo: '' }
+        ];
+
+        // Seed Production Records Data
+        let records = JSON.parse(localStorage.getItem('protrack_records')) || [];
+
+        // Seed Fleet Data
+        let fleetVehicles = JSON.parse(localStorage.getItem('protrack_fleet')) || [
+            { id: 'f1', name: 'Service Truck A', plate: 'ABC-1234', type: 'Utility Van', fuel: 'Diesel', leader: 'Amnel Mapait', status: 'Active' },
+            { id: 'f2', name: 'Service Truck B', plate: 'XYZ-5678', type: 'Pickup Truck', fuel: 'Diesel', leader: 'Gervie Hernandez', status: 'Active' }
+        ];
+
+        // Seed Announcement Data
+        let teamUpdates = JSON.parse(localStorage.getItem('protrack_updates')) || [
+            { id: 'u1', title: 'System Maintenance Notice', content: 'Scheduled network check this Sunday at 08:00 AM.', date: new Date().toISOString().split('T')[0] }
+        ];
+
+        // Installation Team Personnel (retained for Production Logs, excluded from Duty Days and attendance chart)
+        const installationTeamMembers = [
+            'Algin Gabane Balanag', 'Bryan Ballesteros', 'Dickson Rappy Viterbo', 'Ferdinand Fernando',
+            'Gilbert Pablo', 'Jan Ausley Reclosado', 'Jason Biala', 'Jim Cris Cabal',
+            'John Erick Chan', 'John Lester Lapurga', 'John Paul Ayson', 'John Ray Ganzagan',
+            'Mark Anthony Oriña', 'Mark Bryan Antonio', 'Mark Noriel Agliam', 'Michael Mejia',
+            'Michael Novencido', 'Raniel Madrid', 'Rayvhen Clarence Baltazar', 'Remark Lumantas',
+            'Rogelio Manuel', 'Roldan Andrion', 'Romar Beltran', 'Salvador Moñuz',
+            'Victor Jeorge Seldo', 'Yunosuke Yoshimura'
+        ];
+        const PERSONNEL_ATTENDANCE_STATUSES = ['Present', 'Absent', 'Rest Day', 'Vacation Leave', 'Sick Leave'];
+
+        // Seed Weekend Schedule Slots Data (10 slots)
+        // Seed Weekend Schedule Slots Data (9 slots: 4 Saturday, 5 Sunday)
+        let weekendSchedule = JSON.parse(localStorage.getItem('protrack_weekend')) || [
+            { id: 'w_sat1', day: 'Saturday', title: 'Saturday Schedule Slot 1', image: '' },
+            { id: 'w_sat2', day: 'Saturday', title: 'Saturday Schedule Slot 2', image: '' },
+            { id: 'w_sat3', day: 'Saturday', title: 'Saturday Schedule Slot 3', image: '' },
+            { id: 'w_sat4', day: 'Saturday', title: 'Saturday Schedule Slot 4', image: '' },
+            { id: 'w_sat5', day: 'Saturday', title: 'Saturday Schedule Slot 5', image: '' },
+            { id: 'w_sun1', day: 'Sunday', title: 'Sunday Schedule Slot 1', image: '' },
+            { id: 'w_sun2', day: 'Sunday', title: 'Sunday Schedule Slot 2', image: '' },
+            { id: 'w_sun3', day: 'Sunday', title: 'Sunday Schedule Slot 3', image: '' },
+            { id: 'w_sun4', day: 'Sunday', title: 'Sunday Schedule Slot 4', image: '' },
+            { id: 'w_sun5', day: 'Sunday', title: 'Sunday Schedule Slot 5', image: '' }
+        ];
+
+        let selectedDate = '';
+        let sortConfig = { field: 'date', direction: 'desc' };
+
+        // Chart Instance Handles
+        let chartDutyAttendance = null;
+        let chartDailyTrend = null;
+        let chartWorkerOutput = null;
+
+        // --- NAVIGATION & ADMIN LOGIC ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            const targetTab = document.getElementById(`tab-${tabId}`);
+            if (targetTab) targetTab.classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = 'nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-slate-200';
+            });
+
+            const activeNav = document.getElementById(`nav-${tabId}`);
+            if (activeNav) {
+                activeNav.className = 'nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 bg-cyan-500 text-slate-950 font-semibold shadow-md shadow-cyan-500/10';
+            }
+
+            const titleMap = {
+                dashboard: 'Dashboard Overview',
+                records: 'Daily Production Logs',
+                workers: 'Personnel & Duty Days',
+                directory: 'Personnel Info',
+                fleet: 'Fleet Data & Repair Vehicles',
+                updates: 'Advance Team Updates & Announcements'
+            };
+            document.getElementById('page-title').textContent = titleMap[tabId] || 'Dashboard Overview';
+
+            if (tabId === 'dashboard') renderDashboard();
+            if (tabId === 'records') renderTable();
+            if (tabId === 'workers') renderWorkers();
+            if (tabId === 'directory') renderDirectory();
+            if (tabId === 'fleet') renderFleet();
+            if (tabId === 'updates') {
+                renderUpdates();
+                renderWeekendSchedule();
+            }
+
+            // Close mobile drawer on tab click
+            const sidebar = document.getElementById('app-sidebar');
+            const backdrop = document.getElementById('mobile-sidebar-backdrop');
+            if (sidebar) sidebar.classList.add('-translate-x-full');
+            if (backdrop) backdrop.classList.add('hidden');
+        }
+
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('app-sidebar');
+            const backdrop = document.getElementById('mobile-sidebar-backdrop');
+            if (sidebar) sidebar.classList.toggle('-translate-x-full');
+            if (backdrop) backdrop.classList.toggle('hidden');
+        }
+
+        function toggleAdminMode() {
+            if (isAdminMode || isTeamLeadMode) {
+                isAdminMode = false;
+                isTeamLeadMode = false;
+                currentUserRole = 'worker';
+                applyAdminUIState();
+                void adminLogout();
+                showToast('Signed out · View only', 'info');
+            } else {
+                openModal('admin-passcode-modal');
+            }
+        }
+
+        async function handleVerifyPasscode(e) {
+            e.preventDefault();
+            const input = document.getElementById('admin-passcode-input');
+            const roleInput = document.getElementById('protrack-login-role');
+            const requestedRole = roleInput?.value === 'team_lead' ? 'team_lead' : 'admin';
+            const submitButton = document.querySelector('#admin-passcode-form button[type="submit"]');
+            if (submitButton) submitButton.disabled = true;
+            try {
+                const session = await roleLogin(input.value, requestedRole);
+                currentUserRole = session?.role || requestedRole;
+                isAdminMode = currentUserRole === 'admin';
+                isTeamLeadMode = currentUserRole === 'team_lead';
+                applyAdminUIState();
+                closeModal('admin-passcode-modal');
+                input.value = '';
+                const roleMessage = isTeamLeadMode ? 'Team Lead access enabled · Attendance only.' : 'Administrator access enabled.';
+                showToast(sharedDataInitialized ? roleMessage : 'Signed in. An administrator must import this device’s saved data before editing.', sharedDataInitialized ? 'success' : 'info');
+            } catch (error) {
+                showToast(error?.message || 'Admin sign-in failed.', 'error');
+                input.value = '';
+            } finally {
+                if (submitButton) submitButton.disabled = false;
+            }
+        }
+
+        function applyAdminUIState() {
+            const adminBtns = document.querySelectorAll('.admin-only');
+            const lockIcon = document.getElementById('admin-lock-icon');
+            const lockText = document.getElementById('admin-toggle-text');
+            const toggleBtn = document.getElementById('admin-toggle-btn');
+            const canEdit = typeof sharedEditingAllowed === 'function' && sharedEditingAllowed();
+            const canEditAttendance = typeof sharedAttendanceEditingAllowed === 'function' && sharedAttendanceEditingAllowed();
+
+            if (canEdit) {
+                adminBtns.forEach(el => el.classList.remove('hidden'));
+                if (lockIcon) lockIcon.className = 'fa-solid fa-lock-open text-emerald-400';
+                if (lockText) lockText.textContent = 'Administrator Active';
+                if (toggleBtn) toggleBtn.className = 'bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/40 text-xs sm:text-sm font-semibold px-3 py-2 sm:px-4 sm:py-2 rounded-xl flex items-center gap-2 shadow-sm transition';
+            } else if (canEditAttendance && isTeamLeadMode) {
+                adminBtns.forEach(el => el.classList.add('hidden'));
+                if (lockIcon) lockIcon.className = 'fa-solid fa-user-check text-cyan-300';
+                if (lockText) lockText.textContent = 'Team Lead · Attendance Only';
+                if (toggleBtn) toggleBtn.className = 'bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/40 text-xs sm:text-sm font-semibold px-3 py-2 sm:px-4 sm:py-2 rounded-xl flex items-center gap-2 shadow-sm transition';
+            } else {
+                adminBtns.forEach(el => el.classList.add('hidden'));
+                if (lockIcon) lockIcon.className = 'fa-solid fa-lock';
+                if (lockText) lockText.textContent = 'View Only Mode';
+                if (toggleBtn) toggleBtn.className = 'bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/40 text-xs sm:text-sm font-semibold px-3 py-2 sm:px-4 sm:py-2 rounded-xl flex items-center gap-2 shadow-sm transition';
+            }
+            document.querySelectorAll('.personnel-attendance-select').forEach(select => {
+                select.disabled = !canEditAttendance;
+            });
+            if (typeof updateSharedSyncUI === 'function') updateSharedSyncUI();
+        }
+
+        // --- TOAST NOTIFICATIONS & MODALS ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-emerald-900 border-emerald-700 text-emerald-100' :
+                            type === 'error' ? 'bg-rose-900 border-rose-700 text-rose-100' :
+                            'bg-slate-800 border-slate-700 text-slate-100';
+            toast.className = `px-4 py-3 rounded-xl border shadow-lg text-xs font-semibold flex items-center gap-2 transition-all duration-300 transform translate-y-2 pointer-events-auto ${bgClass}`;
+            const icon = document.createElement('i');
+            icon.className = `fa-solid ${type === 'success' ? 'fa-circle-check' : type === 'error' ? 'fa-triangle-exclamation' : 'fa-circle-info'}`;
+            const text = document.createElement('span');
+            text.textContent = String(message);
+            toast.append(icon, text);
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function openModal(id) {
+            const m = document.getElementById(id);
+            if (m) m.classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            const m = document.getElementById(id);
+            if (m) m.classList.add('hidden');
+        }
+
+        // --- DATE FILTER & CALENDAR NAVIGATOR ---
+        function getLocalDateValue() {
+            const date = new Date();
+            date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+            return date.toISOString().slice(0, 10);
+        }
+
+        function getPersonnelDutyDate() {
+            return document.getElementById('personnel-duty-date')?.value || selectedDate || getLocalDateValue();
+        }
+
+        function syncPersonnelDutyDate() {
+            const input = document.getElementById('personnel-duty-date');
+            if (input) input.value = selectedDate || getLocalDateValue();
+        }
+
+        function refreshDateViews() {
+            syncPersonnelDutyDate();
+            updateDateDisplay();
+            renderDashboard();
+            renderTable();
+            renderWorkers();
+        }
+
+        function handlePersonnelDutyDateChange(value) {
+            selectedDate = value || getLocalDateValue();
+            const globalPicker = document.getElementById('global-date-picker');
+            if (globalPicker) globalPicker.value = selectedDate;
+            refreshDateViews();
+        }
+
+        function handleDateSelect(val) {
+            selectedDate = val;
+            refreshDateViews();
+        }
+
+        function navigateDate(days) {
+            const curr = selectedDate ? new Date(selectedDate) : new Date();
+            curr.setDate(curr.getDate() + days);
+            selectedDate = curr.toISOString().split('T')[0];
+            const globalPicker = document.getElementById('global-date-picker');
+            if (globalPicker) globalPicker.value = selectedDate;
+            refreshDateViews();
+        }
+
+        function setTodayDate() {
+            selectedDate = getLocalDateValue();
+            const globalPicker = document.getElementById('global-date-picker');
+            if (globalPicker) globalPicker.value = selectedDate;
+            refreshDateViews();
+        }
+
+        function clearDateFilter() {
+            selectedDate = '';
+            const globalPicker = document.getElementById('global-date-picker');
+            if (globalPicker) globalPicker.value = '';
+            refreshDateViews();
+        }
+
+        function updateDateDisplay() {
+            const disp = document.getElementById('selected-date-display');
+            if (!disp) return;
+            disp.textContent = selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'All Dates (Historical)';
+        }
+
+        // --- LOGO MANAGEMENT ---
+        function triggerLogoUpload() {
+            document.getElementById('team-logo-input').click();
+        }
+
+        function handleTeamLogoUpload(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    teamLogo = e.target.result;
+                    localStorage.setItem('protrack_team_logo', teamLogo);
+                    renderTeamLogo();
+                    showToast('Team logo updated!', 'success');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function renderTeamLogo() {
+            const container = document.getElementById('team-logo-display');
+            if (!container) return;
+            if (teamLogo) {
+                container.innerHTML = `<img src="${teamLogo}" class="w-full h-full object-cover">`;
+            } else {
+                container.innerHTML = `<i class="fa-solid fa-wrench text-sm"></i>`;
+            }
+        }
+
+        // --- PRODUCTION LOGS HANDLERS ---
+        function getAllPersonnelNames() {
+            return Array.from(new Set([...workers.map(worker => worker.name), ...installationTeamMembers]));
+        }
+
+        function populateWorkerSelect() {
+            const sel = document.getElementById('log-worker');
+            const filt = document.getElementById('filter-worker');
+            const personnelNames = getAllPersonnelNames();
+            if (sel) {
+                sel.innerHTML = personnelNames.map(name => `<option value="${name}">${name}</option>`).join('');
+            }
+            if (filt) {
+                filt.innerHTML = `<option value="ALL">All Workers</option>` + personnelNames.map(name => `<option value="${name}">${name}</option>`).join('');
+            }
+        }
+
+        function handleAttendanceChange(val) {
+            const inst = document.getElementById('log-installs');
+            const rest = document.getElementById('log-restored');
+            if (val !== 'Present') {
+                if (inst) inst.value = 0;
+                if (rest) rest.value = 0;
+            }
+        }
+
+        async function handlePersonnelDutyStatusChange(select) {
+            if (typeof sharedAttendanceEditingAllowed !== 'function' || !sharedAttendanceEditingAllowed()) {
+                renderWorkers();
+                return;
+            }
+
+            const group = select.dataset.personnelGroup;
+            const index = Number(select.dataset.personnelIndex);
+            const workerName = group === 'installation' ? installationTeamMembers[index] :
+                               group === 'repair' ? workers[index]?.name : null;
+            const status = select.value;
+            const date = getPersonnelDutyDate();
+            if (!workerName || !PERSONNEL_ATTENDANCE_STATUSES.includes(status) || !date) return;
+
+            select.disabled = true;
+            try {
+                await updateSharedAttendance({ workerName, date, status });
+                showToast(`${workerName}: ${status} saved.`, 'success');
+            } catch (error) {
+                showToast(error?.message || 'Could not save this attendance status.', 'error');
+            } finally {
+                renderWorkers();
+                applyAdminUIState();
+            }
+        }
+
+        function handleSaveProduction(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-log-id').value;
+            const record = {
+                id: id || 'rec_' + Date.now(),
+                date: document.getElementById('log-date').value,
+                workerName: document.getElementById('log-worker').value,
+                attendance: document.getElementById('log-attendance').value,
+                installs: parseInt(document.getElementById('log-installs').value) || 0,
+                restored: parseInt(document.getElementById('log-restored').value) || 0,
+                notes: document.getElementById('log-notes').value
+            };
+            record.totalUnits = record.installs + record.restored;
+            if (record.attendance !== 'Present') {
+                record.installs = 0;
+                record.restored = 0;
+                record.totalUnits = 0;
+            }
+
+            if (id) {
+                const idx = records.findIndex(r => r.id === id);
+                if (idx !== -1) records[idx] = record;
+            } else {
+                records.unshift(record);
+            }
+
+            localStorage.setItem('protrack_records', JSON.stringify(records));
+            closeModal('production-modal');
+            document.getElementById('production-form').reset();
+            document.getElementById('edit-log-id').value = '';
+            selectedDate = record.date;
+            const globalPicker = document.getElementById('global-date-picker');
+            if (globalPicker) globalPicker.value = record.date;
+            refreshDateViews();
+            showToast('Production log saved successfully!', 'success');
+        }
+
+        function editRecord(id) {
+            const rec = records.find(r => r.id === id);
+            if (!rec) return;
+            document.getElementById('edit-log-id').value = rec.id;
+            document.getElementById('log-date').value = rec.date;
+            document.getElementById('log-worker').value = rec.workerName;
+            document.getElementById('log-attendance').value = rec.attendance;
+            document.getElementById('log-installs').value = rec.installs;
+            document.getElementById('log-restored').value = rec.restored;
+            document.getElementById('log-notes').value = rec.notes || '';
+            openModal('production-modal');
+        }
+
+        function deleteRecord(id) {
+            records = records.filter(r => r.id !== id);
+            localStorage.setItem('protrack_records', JSON.stringify(records));
+            renderTable();
+            renderDashboard();
+            renderWorkers();
+            showToast('Record deleted', 'info');
+        }
+
+        function clearAllData() {
+            if (confirm('Are you sure you want to clear all recorded production logs?')) {
+                records = [];
+                localStorage.removeItem('protrack_records');
+                renderTable();
+                renderDashboard();
+                renderWorkers();
+                showToast('All production records cleared', 'error');
+            }
+        }
+
+        function sortTable(field) {
+            if (sortConfig.field === field) {
+                sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortConfig.field = field;
+                sortConfig.direction = 'desc';
+            }
+            renderTable();
+        }
+
+        // --- DASHBOARD RENDERER & CHARTS ---
+        function renderDashboard() {
+            let filtered = records;
+            if (selectedDate) {
+                filtered = records.filter(r => r.date === selectedDate);
+            }
+
+            const totalInstalls = filtered.reduce((s, r) => s + (r.installs || 0), 0);
+            const totalRestored = filtered.reduce((s, r) => s + (r.restored || 0), 0);
+            const presentCount = filtered.filter(r => r.attendance === 'Present').length;
+            const dutyDays = new Set(
+                filtered
+                    .filter(r => r.attendance === 'Present')
+                    .map(r => JSON.stringify([r.workerName, r.date]))
+            ).size;
+
+            document.getElementById('stat-total-installs').textContent = totalInstalls;
+            document.getElementById('stat-total-restored').textContent = totalRestored;
+            document.getElementById('stat-avg-installs').textContent = `Avg ${filtered.length ? (totalInstalls / filtered.length).toFixed(1) : 0} / log`;
+            document.getElementById('stat-avg-restored').textContent = `Avg ${filtered.length ? (totalRestored / filtered.length).toFixed(1) : 0} / log`;
+            document.getElementById('stat-total-attendance').textContent = `${presentCount} Present`;
+            document.getElementById('stat-duty-days').textContent = dutyDays;
+            document.getElementById('stat-active-workers').textContent = workers.length;
+
+            renderCharts(filtered);
+        }
+
+        function renderCharts(filteredRecords) {
+            // 1. Stacked Duty & Attendance Chart
+            const ctxDuty = document.getElementById('chart-duty-attendance');
+            if (ctxDuty) {
+                const workerNames = workers.map(worker => worker.name);
+                const presentData = workerNames.map(name => filteredRecords.filter(r => r.workerName === name && r.attendance === 'Present').length);
+                const absentData = workerNames.map(name => filteredRecords.filter(r => r.workerName === name && r.attendance === 'Absent').length);
+                const restData = workerNames.map(name => filteredRecords.filter(r => r.workerName === name && r.attendance === 'Rest Day').length);
+                const vlData = workerNames.map(name => filteredRecords.filter(r => r.workerName === name && r.attendance === 'Vacation Leave').length);
+                const slData = workerNames.map(name => filteredRecords.filter(r => r.workerName === name && r.attendance === 'Sick Leave').length);
+
+                if (chartDutyAttendance) chartDutyAttendance.destroy();
+                chartDutyAttendance = new Chart(ctxDuty, {
+                    type: 'bar',
+                    data: {
+                        labels: workerNames,
+                        datasets: [
+                            { label: 'Present', data: presentData, backgroundColor: '#10b981' },
+                            { label: 'Absent', data: absentData, backgroundColor: '#f43f5e' },
+                            { label: 'Rest Day', data: restData, backgroundColor: '#64748b' },
+                            { label: 'Vacation Leave', data: vlData, backgroundColor: '#06b6d4' },
+                            { label: 'Sick Leave', data: slData, backgroundColor: '#8b5cf6' }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { labels: { color: '#94a3b8' } } },
+                        scales: {
+                            x: { stacked: true, ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                            y: { stacked: true, ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+                        }
+                    }
+                });
+            }
+
+            // 2. Daily Trend Chart
+            const ctxTrend = document.getElementById('chart-daily-trend');
+            if (ctxTrend) {
+                const dates = Array.from(new Set(records.map(r => r.date))).sort();
+                const installsByDate = dates.map(d => records.filter(r => r.date === d).reduce((s, r) => s + (r.installs || 0), 0));
+                const restoredByDate = dates.map(d => records.filter(r => r.date === d).reduce((s, r) => s + (r.restored || 0), 0));
+
+                if (chartDailyTrend) chartDailyTrend.destroy();
+                chartDailyTrend = new Chart(ctxTrend, {
+                    type: 'line',
+                    data: {
+                        labels: dates,
+                        datasets: [
+                            { label: 'Installs', data: installsByDate, borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)', fill: true, tension: 0.3 },
+                            { label: 'Restored', data: restoredByDate, borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.1)', fill: true, tension: 0.3 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { labels: { color: '#94a3b8' } } },
+                        scales: {
+                            x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                            y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+                        }
+                    }
+                });
+            }
+
+            // 3. Worker Activity Output Bar Chart
+            const ctxWorker = document.getElementById('chart-worker-output');
+            if (ctxWorker) {
+                const workerNames = workers.map(w => w.name);
+                const installs = workerNames.map(name => filteredRecords.filter(r => r.workerName === name).reduce((s, r) => s + (r.installs || 0), 0));
+                const restored = workerNames.map(name => filteredRecords.filter(r => r.workerName === name).reduce((s, r) => s + (r.restored || 0), 0));
+
+                if (chartWorkerOutput) chartWorkerOutput.destroy();
+                chartWorkerOutput = new Chart(ctxWorker, {
+                    type: 'bar',
+                    data: {
+                        labels: workerNames,
+                        datasets: [
+                            { label: 'Installs', data: installs, backgroundColor: '#06b6d4' },
+                            { label: 'Restored', data: restored, backgroundColor: '#8b5cf6' }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { labels: { color: '#94a3b8' } } },
+                        scales: {
+                            x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                            y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+                        }
+                    }
+                });
+            }
+        }
+
+        // --- RECORDS TABLE RENDERER ---
+        function renderTable() {
+            const tbody = document.getElementById('records-tbody');
+            const emptyMarker = document.getElementById('table-empty');
+            if (!tbody) return;
+
+            const searchVal = (document.getElementById('table-search')?.value || '').toLowerCase();
+            const statusFilter = document.getElementById('filter-status')?.value || 'ALL';
+            const workerFilter = document.getElementById('filter-worker')?.value || 'ALL';
+
+            let list = records.filter(r => {
+                if (selectedDate && r.date !== selectedDate) return false;
+                if (statusFilter !== 'ALL' && r.attendance !== statusFilter) return false;
+                if (workerFilter !== 'ALL' && r.workerName !== workerFilter) return false;
+                if (searchVal) {
+                    const matchWorker = (r.workerName || '').toLowerCase().includes(searchVal);
+                    const matchNotes = (r.notes || '').toLowerCase().includes(searchVal);
+                    if (!matchWorker && !matchNotes) return false;
+                }
+                return true;
+            });
+
+            // Sorting
+            list.sort((a, b) => {
+                let valA = a[sortConfig.field];
+                let valB = b[sortConfig.field];
+                if (typeof valA === 'string') valA = valA.toLowerCase();
+                if (typeof valB === 'string') valB = valB.toLowerCase();
+                if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            if (list.length === 0) {
+                tbody.innerHTML = '';
+                if (emptyMarker) emptyMarker.classList.remove('hidden');
+                return;
+            }
+
+            if (emptyMarker) emptyMarker.classList.add('hidden');
+
+            tbody.innerHTML = list.map(r => {
+                const attBadge = r.attendance === 'Present' ? 'bg-emerald-950 text-emerald-400 border-emerald-800' :
+                                 r.attendance === 'Absent' ? 'bg-rose-950 text-rose-400 border-rose-800' :
+                                 r.attendance === 'Rest Day' ? 'bg-slate-800 text-slate-300 border-slate-700' :
+                                 r.attendance === 'Vacation Leave' ? 'bg-cyan-950 text-cyan-300 border-cyan-800' :
+                                 r.attendance === 'Sick Leave' ? 'bg-violet-950 text-violet-300 border-violet-800' :
+                                 'bg-slate-800 text-slate-300 border-slate-700';
+
+                return `
+                    <tr class="hover:bg-slate-800/50 transition">
+                        <td class="py-3 px-4 font-medium text-slate-200">${r.date}</td>
+                        <td class="py-3 px-4 font-bold text-slate-100">${r.workerName}</td>
+                        <td class="py-3 px-4">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold border ${attBadge}">
+                                ${r.attendance}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 font-bold text-cyan-400">${r.installs}</td>
+                        <td class="py-3 px-4 font-bold text-purple-400">${r.restored}</td>
+                        <td class="py-3 px-4 font-extrabold text-slate-100">${r.totalUnits || (r.installs + r.restored)}</td>
+                        <td class="py-3 px-4 text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <button onclick="editRecord('${r.id}')" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <button onclick="deleteRecord('${r.id}')" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-rose-950 hover:bg-rose-900 text-rose-300 px-2.5 py-1 rounded-lg border border-rose-800">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // --- WORKER ROSTER & DUTY DAYS ---
+        function renderPersonnelAttendanceSelector(group, index, personName) {
+            const date = getPersonnelDutyDate();
+            const existingRecord = records.find(record => record.workerName === personName && record.date === date);
+            const currentStatus = existingRecord?.attendance || '';
+            const hasCurrentStatus = PERSONNEL_ATTENDANCE_STATUSES.includes(currentStatus);
+            return `
+                <div class="mt-3 p-3 bg-slate-950 rounded-xl border border-slate-800">
+                    <label class="block text-[9px] text-slate-400 uppercase font-semibold mb-1">Attendance · ${date}</label>
+            <select data-personnel-group="${group}" data-personnel-index="${index}" onchange="handlePersonnelDutyStatusChange(this)" ${typeof sharedAttendanceEditingAllowed === 'function' && sharedAttendanceEditingAllowed() ? '' : 'disabled'} aria-label="Select daily attendance status" class="personnel-attendance-select w-full bg-slate-900 border border-slate-700 text-slate-200 px-2 py-2 rounded-lg text-xs focus:ring-2 focus:ring-cyan-500 focus:outline-none disabled:opacity-70">
+                        <option value="" disabled ${hasCurrentStatus ? '' : 'selected'}>Not marked</option>
+                        ${PERSONNEL_ATTENDANCE_STATUSES.map(status => `<option value="${status}" ${currentStatus === status ? 'selected' : ''}>${status}</option>`).join('')}
+                    </select>
+                </div>
+            `;
+        }
+
+        function renderPersonnelAttendanceSummary() {
+            const scope = document.getElementById('personnel-attendance-summary-scope');
+            const values = document.getElementById('personnel-attendance-summary-values');
+            const scopedRecords = selectedDate ? records.filter(record => record.date === selectedDate) : records;
+            const repairPersonnel = new Set(workers.map(worker => worker.name));
+            const personDayStatuses = new Map();
+            scopedRecords.forEach(record => {
+                if (!repairPersonnel.has(record.workerName) || !record.date || !PERSONNEL_ATTENDANCE_STATUSES.includes(record.attendance)) return;
+                const key = JSON.stringify([record.workerName, record.date]);
+                if (!personDayStatuses.has(key)) personDayStatuses.set(key, record.attendance);
+            });
+
+            const totals = Object.fromEntries(PERSONNEL_ATTENDANCE_STATUSES.map(status => [status, 0]));
+            personDayStatuses.forEach(status => { totals[status] += 1; });
+            if (scope) scope.textContent = selectedDate ? `Selected date · ${selectedDate}` : 'All logged dates';
+            if (!values) return;
+
+            const statusStyles = {
+                'Present': 'border-emerald-800 bg-emerald-950/50 text-emerald-300',
+                'Absent': 'border-rose-800 bg-rose-950/50 text-rose-300',
+                'Rest Day': 'border-slate-700 bg-slate-800/70 text-slate-300',
+                'Vacation Leave': 'border-cyan-800 bg-cyan-950/50 text-cyan-300',
+                'Sick Leave': 'border-violet-800 bg-violet-950/50 text-violet-300'
+            };
+            values.innerHTML = PERSONNEL_ATTENDANCE_STATUSES.map(status => `
+                <div class="rounded-xl border ${statusStyles[status]} p-3 min-w-0">
+                    <p class="text-[10px] font-semibold uppercase tracking-wide truncate">${status}</p>
+                    <div class="mt-1 flex items-baseline gap-1.5">
+                        <span data-status-total="${status}" class="text-xl font-bold">${totals[status]}</span>
+                        <span class="text-[10px] opacity-80">days</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getCurrentReportMonth() {
+            const now = new Date();
+            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        function escapeReportHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[char]);
+        }
+
+        function renderMonthlyAttendanceReport() {
+            const monthInput = document.getElementById('personnel-report-month');
+            const body = document.getElementById('personnel-monthly-report-body');
+            if (!body || typeof buildMonthlyAttendanceRows !== 'function') return;
+            if (monthInput && !monthInput.value) monthInput.value = getCurrentReportMonth();
+            const month = monthInput?.value || getCurrentReportMonth();
+            const rows = buildMonthlyAttendanceRows(workers, records, month);
+            if (!rows.length) {
+                body.innerHTML = '<tr><td colspan="7" class="p-5 text-center text-slate-500">No repair-team members to report.</td></tr>';
+                return;
+            }
+            body.innerHTML = rows.map(row => `
+                <tr>
+                    <td class="p-3 font-semibold">${escapeReportHtml(row.personName)}</td>
+                    <td class="p-3 text-center font-bold text-emerald-300">${row.presentDays}</td>
+                    <td class="p-3 text-center">${row.absentDays}</td>
+                    <td class="p-3 text-center">${row.restDays}</td>
+                    <td class="p-3 text-center">${row.vacationLeaveDays}</td>
+                    <td class="p-3 text-center">${row.sickLeaveDays}</td>
+                    <td class="p-3 text-center font-bold">${row.totalMarkedDays}</td>
+                </tr>
+            `).join('');
+        }
+
+        function exportMonthlyAttendanceCSV() {
+            if (typeof buildMonthlyAttendanceRows !== 'function' || typeof monthlyAttendanceRowsToCsv !== 'function') {
+                showToast('Monthly report is still loading. Try again in a moment.', 'error');
+                return;
+            }
+            const monthInput = document.getElementById('personnel-report-month');
+            const month = monthInput?.value || getCurrentReportMonth();
+            if (monthInput && !monthInput.value) monthInput.value = month;
+            const rows = buildMonthlyAttendanceRows(workers, records, month);
+            const csv = monthlyAttendanceRowsToCsv(rows);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+            const objectUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = objectUrl;
+            link.download = `ProTrack_Personnel_Attendance_${month}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(objectUrl);
+            showToast(`Monthly attendance report exported for ${month}.`, 'success');
+        }
+
+        function renderWorkers() {
+            const grid = document.getElementById('workers-grid');
+            if (!grid) return;
+            syncPersonnelDutyDate();
+            renderPersonnelAttendanceSummary();
+            renderMonthlyAttendanceReport();
+
+            grid.innerHTML = workers.map((w, index) => {
+                const workerLogs = records.filter(r => r.workerName === w.name);
+                const totalInstalls = workerLogs.reduce((s, r) => s + (r.installs || 0), 0);
+                const totalRestored = workerLogs.reduce((s, r) => s + (r.restored || 0), 0);
+                const dutyDays = new Set(
+                    workerLogs
+                        .filter(r => r.attendance === 'Present')
+                        .map(r => r.date)
+                ).size;
+
+                return `
+                    <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-sm flex flex-col justify-between space-y-3">
+                        <div class="flex items-center gap-3">
+                            <img src="${w.photo || 'https://placehold.co/100x100/111827/06b6d4?text=' + encodeURIComponent(w.name)}" class="w-12 h-12 rounded-xl object-cover border border-slate-700 flex-shrink-0" onerror="this.src='https://placehold.co/100x100/111827/06b6d4?text=Tech'">
+                            <div class="min-w-0 flex-1">
+                                <h3 class="font-bold text-slate-100 text-sm truncate">${w.name}</h3>
+                                <p class="text-xs text-slate-400 truncate">${w.role}</p>
+                                <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-800">${w.dept}</span>
+                            </div>
+                        </div>
+                        ${renderPersonnelAttendanceSelector('repair', index, w.name)}
+                        <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800 text-center">
+                            <div class="bg-slate-950 p-2 rounded-xl border border-slate-800">
+                                <span class="text-[9px] text-slate-400 uppercase font-semibold block">Duty Days</span>
+                                <span class="text-xs font-bold text-slate-100">${dutyDays}</span>
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl border border-slate-800">
+                                <span class="text-[9px] text-cyan-400 uppercase font-semibold block">Installs</span>
+                                <span class="text-xs font-bold text-cyan-400">${totalInstalls}</span>
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl border border-slate-800">
+                                <span class="text-[9px] text-purple-400 uppercase font-semibold block">Restored</span>
+                                <span class="text-xs font-bold text-purple-400">${totalRestored}</span>
+                            </div>
+                        </div>
+                        <div class="pt-2 border-t border-slate-800 flex items-center justify-end gap-2">
+                            <button onclick="editWorker('${w.id}')" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-xl border border-slate-700 flex items-center gap-1 transition">
+                                <i class="fa-solid fa-user-pen"></i> Edit / Replace
+                            </button>
+                            <button onclick="removeWorker('${w.id}')" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-rose-950 hover:bg-rose-900 text-rose-300 px-2.5 py-1 rounded-xl border border-rose-800 flex items-center gap-1 transition">
+                                <i class="fa-solid fa-user-minus"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const staleInstallationSection = document.getElementById('installation-team-section');
+            if (staleInstallationSection) staleInstallationSection.remove();
+        }
+
+        function editInstallationMember(index) {
+            const currentName = installationTeamMembers[index];
+            const newName = prompt('Enter new Technician Name:', currentName);
+            if (newName && newName.trim() !== '') {
+                installationTeamMembers[index] = newName.trim();
+                renderWorkers();
+                showToast('Installation technician updated!', 'success');
+            }
+        }
+
+        function removeInstallationMember(index) {
+            if (confirm(`Remove ${installationTeamMembers[index]} from Installation Team?`)) {
+                installationTeamMembers.splice(index, 1);
+                renderWorkers();
+                showToast('Installation technician removed', 'info');
+            }
+        }
+
+        // --- PERSONNEL DIRECTORY ---
+        function renderDirectory() {
+            const grid = document.getElementById('directory-grid');
+            if (!grid) return;
+
+            grid.innerHTML = workers.map(w => `
+                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-sm flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                    <img src="${w.photo || 'https://placehold.co/200x200/111827/06b6d4?text=' + encodeURIComponent(w.name)}" class="w-36 h-36 sm:w-44 sm:h-44 rounded-2xl object-cover border-2 border-slate-700 shadow-md flex-shrink-0" onerror="this.src='https://placehold.co/200x200/111827/06b6d4?text=Technician'">
+                    <div class="flex-1 text-center sm:text-left space-y-2 min-w-0 w-full">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                            <h3 class="text-lg sm:text-xl font-bold text-slate-100 truncate">${w.name}</h3>
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-cyan-950 text-cyan-300 border border-cyan-800 self-center sm:self-auto">${w.dept}</span>
+                        </div>
+                        <p class="text-sm font-medium text-slate-400">${w.role}</p>
+                        <div class="pt-3 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                            <button onclick="triggerWorkerPhotoUpload('${w.id}')" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-cyan-950 hover:bg-cyan-900 text-cyan-300 px-3 py-1.5 rounded-xl border border-cyan-800 flex items-center gap-1.5 transition">
+                                <i class="fa-solid fa-camera"></i> ${w.photo ? 'Change Photo' : 'Upload Photo'}
+                            </button>
+                            <button onclick="editWorker('${w.id}')" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl border border-slate-700 flex items-center gap-1.5 transition">
+                                <i class="fa-solid fa-user-pen"></i> Edit / Replace
+                            </button>
+                            <button onclick="removeWorker('${w.id}')" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-rose-950 hover:bg-rose-900 text-rose-300 px-3 py-1.5 rounded-xl border border-rose-800 flex items-center gap-1.5 transition">
+                                <i class="fa-solid fa-user-minus"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                `).join('');
+        }
+
+        function persistWorkers() {
+            try {
+                localStorage.setItem('protrack_workers', JSON.stringify(workers));
+                return true;
+            } catch (error) {
+                showToast('Could not save personnel photos. Free up browser storage and try again.', 'error');
+                return false;
+            }
+        }
+
+        function triggerWorkerPhotoUpload(workerId) {
+            if (!isAdminMode) return;
+            const worker = workers.find(item => item.id === workerId);
+            const input = document.getElementById('worker-photo-upload-input');
+            if (!worker || !input) return;
+            input.dataset.workerId = workerId;
+            input.value = '';
+            input.click();
+        }
+
+        function handleWorkerPhotoUpload(input) {
+            const file = input.files && input.files[0];
+            const workerId = input.dataset.workerId;
+            input.value = '';
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                showToast('Choose an image file for the personnel photo.', 'error');
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) {
+                showToast('Choose an image smaller than 10 MB.', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onerror = () => showToast('The selected photo could not be read.', 'error');
+            reader.onload = event => {
+                const image = new Image();
+                image.onerror = () => showToast('The selected photo could not be opened.', 'error');
+                image.onload = () => openWorkerPhotoCrop(workerId, image);
+                image.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function openWorkerPhotoCrop(workerId, image) {
+            const worker = workers.find(item => item.id === workerId);
+            const modal = document.getElementById('worker-photo-crop-modal');
+            const viewport = document.getElementById('worker-photo-crop-viewport');
+            const preview = document.getElementById('worker-photo-crop-image');
+            if (!worker || !modal || !viewport || !preview) {
+                showToast('The photo crop tool could not be opened.', 'error');
+                return;
+            }
+
+            document.getElementById('worker-photo-crop-person').textContent = `Cropping photo for ${worker.name}`;
+            document.getElementById('worker-photo-crop-zoom').value = '1';
+            preview.src = image.src;
+            modal.classList.remove('hidden');
+
+            const state = {
+                workerId,
+                image,
+                viewportSize: 0,
+                baseScale: 1,
+                zoom: 1,
+                left: 0,
+                top: 0,
+                dragging: false
+            };
+            workerPhotoCropState = state;
+
+            requestAnimationFrame(() => {
+                if (workerPhotoCropState !== state) return;
+                const bounds = viewport.getBoundingClientRect();
+                const size = Math.min(bounds.width, bounds.height);
+                if (!size || !image.naturalWidth || !image.naturalHeight) {
+                    showToast('The photo crop area could not be sized.', 'error');
+                    cancelWorkerPhotoCrop();
+                    return;
+                }
+
+                state.viewportSize = size;
+                state.baseScale = Math.max(size / image.naturalWidth, size / image.naturalHeight);
+                state.left = (size - image.naturalWidth * state.baseScale) / 2;
+                state.top = (size - image.naturalHeight * state.baseScale) / 2;
+                renderWorkerPhotoCrop();
+            });
+        }
+
+        function renderWorkerPhotoCrop() {
+            const state = workerPhotoCropState;
+            const preview = document.getElementById('worker-photo-crop-image');
+            if (!state || !preview || !state.viewportSize) return;
+
+            const scale = state.baseScale * state.zoom;
+            const width = state.image.naturalWidth * scale;
+            const height = state.image.naturalHeight * scale;
+            state.left = Math.min(0, Math.max(state.viewportSize - width, state.left));
+            state.top = Math.min(0, Math.max(state.viewportSize - height, state.top));
+            preview.style.width = `${width}px`;
+            preview.style.height = `${height}px`;
+            preview.style.left = `${state.left}px`;
+            preview.style.top = `${state.top}px`;
+        }
+
+        function startWorkerPhotoCropDrag(event) {
+            const state = workerPhotoCropState;
+            if (!state || !state.viewportSize) return;
+            event.preventDefault();
+            state.dragging = true;
+            state.pointerId = event.pointerId;
+            state.startPointerX = event.clientX;
+            state.startPointerY = event.clientY;
+            state.startLeft = state.left;
+            state.startTop = state.top;
+            if (event.currentTarget.setPointerCapture) event.currentTarget.setPointerCapture(event.pointerId);
+        }
+
+        function moveWorkerPhotoCropDrag(event) {
+            const state = workerPhotoCropState;
+            if (!state || !state.dragging || state.pointerId !== event.pointerId) return;
+            state.left = state.startLeft + event.clientX - state.startPointerX;
+            state.top = state.startTop + event.clientY - state.startPointerY;
+            renderWorkerPhotoCrop();
+        }
+
+        function endWorkerPhotoCropDrag(event) {
+            const state = workerPhotoCropState;
+            if (state && state.dragging && state.pointerId === event.pointerId) state.dragging = false;
+        }
+
+        function zoomWorkerPhotoCrop(value) {
+            const state = workerPhotoCropState;
+            if (!state || !state.viewportSize) return;
+
+            const center = state.viewportSize / 2;
+            const oldScale = state.baseScale * state.zoom;
+            const focusX = (center - state.left) / oldScale;
+            const focusY = (center - state.top) / oldScale;
+            state.zoom = Math.max(1, Math.min(3, Number(value) || 1));
+            const newScale = state.baseScale * state.zoom;
+            state.left = center - focusX * newScale;
+            state.top = center - focusY * newScale;
+            renderWorkerPhotoCrop();
+        }
+
+        function resetWorkerPhotoCrop() {
+            const state = workerPhotoCropState;
+            if (!state) return;
+            state.zoom = 1;
+            state.left = (state.viewportSize - state.image.naturalWidth * state.baseScale) / 2;
+            state.top = (state.viewportSize - state.image.naturalHeight * state.baseScale) / 2;
+            document.getElementById('worker-photo-crop-zoom').value = '1';
+            renderWorkerPhotoCrop();
+        }
+
+        function cancelWorkerPhotoCrop() {
+            const modal = document.getElementById('worker-photo-crop-modal');
+            const preview = document.getElementById('worker-photo-crop-image');
+            if (modal) modal.classList.add('hidden');
+            if (preview) preview.src = '';
+            workerPhotoCropState = null;
+        }
+
+        function saveWorkerPhotoCrop() {
+            const state = workerPhotoCropState;
+            if (!state || !state.viewportSize) return;
+            const worker = workers.find(item => item.id === state.workerId);
+            if (!worker) {
+                showToast('That personnel profile is no longer available.', 'error');
+                return;
+            }
+
+            const scale = state.baseScale * state.zoom;
+            const sourceSize = state.viewportSize / scale;
+            const sourceX = Math.max(0, Math.min(state.image.naturalWidth - sourceSize, -state.left / scale));
+            const sourceY = Math.max(0, Math.min(state.image.naturalHeight - sourceSize, -state.top / scale));
+            const canvas = document.createElement('canvas');
+            canvas.width = 480;
+            canvas.height = 480;
+            const context = canvas.getContext('2d');
+            if (!context) {
+                showToast('Photo processing is not available in this browser.', 'error');
+                return;
+            }
+
+            try {
+                context.drawImage(state.image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, 480, 480);
+                const oldPhoto = worker.photo;
+                worker.photo = canvas.toDataURL('image/jpeg', 0.82);
+                if (!persistWorkers()) {
+                    worker.photo = oldPhoto;
+                    return;
+                }
+            } catch (error) {
+                showToast('The cropped photo could not be saved. Try another image.', 'error');
+                return;
+            }
+
+            const workerName = worker.name;
+            cancelWorkerPhotoCrop();
+            renderDirectory();
+            renderWorkers();
+            showToast(`${workerName}'s cropped photo was saved.`, 'success');
+        }
+
+        function handleSaveWorker(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-worker-id').value;
+            const name = document.getElementById('worker-name').value;
+            const role = document.getElementById('worker-role').value;
+            const dept = document.getElementById('worker-dept').value;
+            const photoUrl = document.getElementById('worker-photo').value.trim();
+            const currentWorker = id ? workers.find(worker => worker.id === id) : null;
+            const photo = photoUrl || currentWorker?.photo || '';
+            const previousWorkers = workers.map(worker => ({ ...worker }));
+
+            if (id) {
+                const idx = workers.findIndex(w => w.id === id);
+                if (idx !== -1) {
+                    workers[idx] = { id, name, role, dept, photo };
+                }
+            } else {
+                workers.push({ id: 'w_' + Date.now(), name, role, dept, photo });
+            }
+
+            if (!persistWorkers()) {
+                workers = previousWorkers;
+                return;
+            }
+            closeModal('worker-modal');
+            document.getElementById('worker-form').reset();
+            document.getElementById('edit-worker-id').value = '';
+            populateWorkerSelect();
+            renderWorkers();
+            renderDirectory();
+            showToast('Worker profile updated!', 'success');
+        }
+
+        function editWorker(id) {
+            const w = workers.find(item => item.id === id);
+            if (!w) return;
+            document.getElementById('edit-worker-id').value = w.id;
+            document.getElementById('worker-name').value = w.name;
+            document.getElementById('worker-role').value = w.role;
+            document.getElementById('worker-dept').value = w.dept;
+            const photoValue = w.photo || '';
+            document.getElementById('worker-photo').value = photoValue.startsWith('data:image/') ? '' : photoValue;
+            openModal('worker-modal');
+        }
+
+        function removeWorker(id) {
+            if (confirm('Are you sure you want to remove this personnel profile?')) {
+                const previousWorkers = workers;
+                workers = workers.filter(w => w.id !== id);
+                if (!persistWorkers()) {
+                    workers = previousWorkers;
+                    return;
+                }
+                populateWorkerSelect();
+                renderWorkers();
+                renderDirectory();
+                showToast('Personnel removed', 'info');
+            }
+        }
+
+        // --- FLEET DATA & VEHICLES ---
+        function renderFleet() {
+            const grid = document.getElementById('fleet-grid');
+            if (!grid) return;
+
+            grid.innerHTML = fleetVehicles.map(f => {
+                const statusBadge = f.status === 'Active' ? 'bg-emerald-950 text-emerald-400 border-emerald-800' :
+                                    f.status === 'Standby' ? 'bg-amber-950 text-amber-400 border-amber-800' :
+                                    'bg-rose-950 text-rose-400 border-rose-800';
+                return `
+                    <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-3">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="font-bold text-slate-100 text-base">${f.name}</h3>
+                                <p class="text-xs font-mono text-cyan-400 font-bold">${f.plate}</p>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold border ${statusBadge}">${f.status}</span>
+                        </div>
+                        <div class="text-xs space-y-1 text-slate-300 pt-2 border-t border-slate-800">
+                            <p><span class="text-slate-500">Type:</span> ${f.type}</p>
+                            <p><span class="text-slate-500">Fuel:</span> ${f.fuel}</p>
+                            <p><span class="text-slate-500">Team Leader:</span> <strong class="text-slate-200">${f.leader}</strong></p>
+                        </div>
+                        <div class="pt-2 flex items-center justify-end gap-2">
+                            <button onclick="editFleet('${f.id}')" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl border border-slate-700 flex items-center gap-1 transition">
+                                <i class="fa-solid fa-pen"></i> Edit Vehicle
+                            </button>
+                            <button onclick="deleteFleet('${f.id}')" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-rose-950 hover:bg-rose-900 text-rose-300 px-3 py-1.5 rounded-xl border border-rose-800 flex items-center gap-1 transition">
+                                <i class="fa-solid fa-trash"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function handleSaveFleet(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-fleet-id').value;
+            const fleet = {
+                id: id || 'f_' + Date.now(),
+                name: document.getElementById('fleet-name').value,
+                plate: document.getElementById('fleet-plate').value,
+                type: document.getElementById('fleet-type').value,
+                fuel: document.getElementById('fleet-fuel').value,
+                leader: document.getElementById('fleet-leader').value,
+                status: document.getElementById('fleet-status').value
+            };
+
+            if (id) {
+                const idx = fleetVehicles.findIndex(f => f.id === id);
+                if (idx !== -1) fleetVehicles[idx] = fleet;
+            } else {
+                fleetVehicles.push(fleet);
+            }
+
+            localStorage.setItem('protrack_fleet', JSON.stringify(fleetVehicles));
+            closeModal('fleet-modal');
+            document.getElementById('fleet-form').reset();
+            document.getElementById('edit-fleet-id').value = '';
+            renderFleet();
+            showToast('Fleet vehicle details saved!', 'success');
+        }
+
+        function editFleet(id) {
+            const f = fleetVehicles.find(item => item.id === id);
+            if (!f) return;
+            document.getElementById('edit-fleet-id').value = f.id;
+            document.getElementById('fleet-name').value = f.name;
+            document.getElementById('fleet-plate').value = f.plate;
+            document.getElementById('fleet-type').value = f.type || '';
+            document.getElementById('fleet-fuel').value = f.fuel;
+            document.getElementById('fleet-leader').value = f.leader || '';
+            document.getElementById('fleet-status').value = f.status;
+            openModal('fleet-modal');
+        }
+
+        function deleteFleet(id) {
+            if (confirm('Delete this fleet vehicle entry?')) {
+                fleetVehicles = fleetVehicles.filter(f => f.id !== id);
+                localStorage.setItem('protrack_fleet', JSON.stringify(fleetVehicles));
+                renderFleet();
+                showToast('Vehicle removed from fleet', 'info');
+            }
+        }
+
+        // --- ANNOUNCEMENTS / ADVANCE UPDATES ---
+        function renderUpdates() {
+            const grid = document.getElementById('updates-grid');
+            if (!grid) return;
+
+            grid.innerHTML = teamUpdates.map(u => `
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 relative group">
+                    <div class="flex justify-between items-start">
+                        <h4 class="font-bold text-slate-100 text-sm">${u.title}</h4>
+                        <span class="text-[10px] text-slate-500 font-mono">${u.date}</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">${u.content}</p>
+                    <div class="pt-2 flex justify-end">
+                        <button onclick="deleteTeamUpdate('${u.id}')" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 transition">
+                            <i class="fa-solid fa-trash"></i> Remove
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function handleSaveUpdate(e) {
+            e.preventDefault();
+            const update = {
+                id: 'u_' + Date.now(),
+                title: document.getElementById('update-title').value,
+                content: document.getElementById('update-content').value,
+                date: new Date().toISOString().split('T')[0]
+            };
+            teamUpdates.unshift(update);
+            localStorage.setItem('protrack_updates', JSON.stringify(teamUpdates));
+            closeModal('update-modal');
+            document.getElementById('update-form').reset();
+            renderUpdates();
+            showToast('Announcement posted!', 'success');
+        }
+
+        function deleteTeamUpdate(id) {
+            if (confirm('Delete this announcement?')) {
+                teamUpdates = teamUpdates.filter(u => u.id !== id);
+                localStorage.setItem('protrack_updates', JSON.stringify(teamUpdates));
+                renderUpdates();
+                showToast('Announcement removed', 'info');
+            }
+        }
+
+        // --- SATURDAY - SUNDAY WEEKEND SCHEDULE ---
+        function renderWeekendSchedule() {
+            const grid = document.getElementById('weekend-schedule-grid');
+            if (!grid) return;
+
+            const saturdaySlots = weekendSchedule.filter(s => s.day === 'Saturday');
+            const sundaySlots = weekendSchedule.filter(s => s.day === 'Sunday');
+
+            const renderColumn = (slots, dayLabel) => `
+                <div class="space-y-4">
+                    ${slots.map((s, idx) => `
+                        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col items-center justify-center relative min-h-[300px]">
+                            ${s.image ? `
+                                <div class="w-full h-[500px] sm:h-[650px] overflow-hidden rounded-xl bg-slate-900 border border-slate-800 relative group flex items-center justify-center">
+                                    <img src="${s.image}" class="w-full h-full object-contain">
+                                    <div class="admin-only ${isAdminMode ? '' : 'hidden'} absolute top-3 right-3 flex items-center gap-2">
+                                        <button onclick="openWeekendModalForSlot('${s.id}')" class="bg-slate-900/90 hover:bg-slate-800 text-slate-100 text-xs px-3 py-1.5 rounded-xl border border-slate-700 shadow">
+                                            Change Photo
+                                        </button>
+                                        <button onclick="removeWeekendPhoto('${s.id}')" class="bg-rose-950/90 hover:bg-rose-900 text-rose-300 text-xs px-3 py-1.5 rounded-xl border border-rose-800 shadow">
+                                            Remove Photo
+                                        </button>
+                                    </div>
+                                </div>
+                            ` : `
+                                <div onclick="${isAdminMode ? `openWeekendModalForSlot('${s.id}')` : ''}" class="w-full h-48 border-2 border-dashed border-slate-800 hover:border-purple-500/50 rounded-xl flex flex-col items-center justify-center p-6 text-center transition cursor-pointer">
+                                    <i class="fa-solid fa-cloud-arrow-up text-3xl text-slate-600 mb-2"></i>
+                                    <span class="text-xs font-semibold text-slate-400">Upload Schedule Photo</span>
+                                    <span class="text-[10px] text-slate-600 mt-1">${dayLabel} Snapshot</span>
+                                </div>
+                            `}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            grid.innerHTML = `
+                ${renderColumn(saturdaySlots, 'Saturday')}
+                ${renderColumn(sundaySlots, 'Sunday')}
+            `;
+        }
+
+        function openWeekendModalForSlot(id) {
+            const slot = weekendSchedule.find(s => s.id === id);
+            if (!slot) return;
+            document.getElementById('edit-weekend-id').value = slot.id;
+            document.getElementById('weekend-day').value = slot.day;
+            if (slot.image) {
+                document.getElementById('weekend-image-data').value = slot.image;
+                document.getElementById('weekend-image-preview').src = slot.image;
+                document.getElementById('weekend-image-preview-container').classList.remove('hidden');
+            } else {
+                clearWeekendImagePreview();
+            }
+            openModal('weekend-schedule-modal');
+        }
+
+        function previewWeekendImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('weekend-image-data').value = e.target.result;
+                    document.getElementById('weekend-image-preview').src = e.target.result;
+                    document.getElementById('weekend-image-preview-container').classList.remove('hidden');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function clearWeekendImagePreview() {
+            document.getElementById('weekend-image-input').value = '';
+            document.getElementById('weekend-image-data').value = '';
+            document.getElementById('weekend-image-preview').src = '';
+            document.getElementById('weekend-image-preview-container').classList.add('hidden');
+        }
+
+        function handleSaveWeekendSchedule(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-weekend-id').value;
+            const day = document.getElementById('weekend-day').value;
+            const imageData = document.getElementById('weekend-image-data').value;
+
+            const idx = weekendSchedule.findIndex(s => s.id === id);
+            if (idx !== -1) {
+                weekendSchedule[idx].day = day;
+                weekendSchedule[idx].image = imageData;
+            } else {
+                weekendSchedule.push({ id: 'w_' + Date.now(), day, image: imageData });
+            }
+
+            localStorage.setItem('protrack_weekend', JSON.stringify(weekendSchedule));
+            closeModal('weekend-schedule-modal');
+            renderWeekendSchedule();
+            showToast('Weekend schedule photo saved!', 'success');
+        }
+
+        function removeWeekendPhoto(id) {
+            const slot = weekendSchedule.find(s => s.id === id);
+            if (slot) {
+                slot.image = '';
+                localStorage.setItem('protrack_weekend', JSON.stringify(weekendSchedule));
+                renderWeekendSchedule();
+                showToast('Schedule photo removed', 'info');
+            }
+        }
+
+        // --- CSV EXPORTER ---
+        function exportToCSV() {
+            if (records.length === 0) {
+                showToast('No production logs to export', 'error');
+                return;
+            }
+            if (typeof window.productionRecordsToCsv !== 'function') {
+                showToast('CSV export is not ready. Reload the dashboard and try again.', 'error');
+                return;
+            }
+            const csvContent = window.productionRecordsToCsv(records);
+            const downloadUrl = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8' }));
+            const link = document.createElement('a');
+            link.setAttribute('href', downloadUrl);
+            link.setAttribute('download', `ProTrack_Production_Logs_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
+            showToast('CSV Export generated!', 'success');
+        }
+
+        // APP INITIALIZATION ON WINDOW LOAD
+        window.onload = async function() {
+            await initializeSharedData();
+            renderTeamLogo();
+            populateWorkerSelect();
+            applyAdminUIState();
+            switchTab('dashboard');
+        };
+    </script>
+    <script type="module" src="/attendance-report.js"></script>
+    <script src="/shared-sync.js"></script>
+</body>
+</html>
