@@ -1,1 +1,1943 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProTrack - Dark Production Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        darkbg: '#090d16',
+                        darkcard: '#111827',
+                        darkborder: '#1f2937',
+                        cyanaccent: '#06b6d4',
+                        purpleaccent: '#8b5cf6',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for dark view */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+    </style>
+</head>
+<body class="h-full font-sans text-slate-200 antialiased flex flex-col md:flex-row overflow-hidden bg-slate-950">
 
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Mobile Navigation Overlay Drawer -->
+    <div id="mobile-sidebar-backdrop" onclick="toggleMobileSidebar()" class="fixed inset-0 z-30 bg-slate-950/80 backdrop-blur-sm hidden md:hidden transition-opacity"></div>
+
+    <!-- Sidebar Navigation -->
+    <aside id="app-sidebar" class="fixed md:static inset-y-0 left-0 w-72 md:w-64 bg-slate-900 border-r border-slate-800 text-slate-300 flex-shrink-0 flex flex-col justify-between z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
+        <div>
+            <!-- App Brand Header -->
+            <div class="h-16 flex items-center justify-between px-4 sm:px-6 bg-slate-950 border-b border-slate-800 text-white font-bold text-xl tracking-wider">
+                <div class="flex items-center gap-3 min-w-0">
+                    <!-- Custom Team Logo Upload Container -->
+                    <div class="relative group flex-shrink-0">
+                        <div id="team-logo-display" onclick="triggerLogoUpload()" class="h-9 w-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-cyan-400 overflow-hidden cursor-pointer shadow-md hover:border-cyan-400 transition" title="Click to upload team logo/picture">
+                            <i class="fa-solid fa-wrench text-sm"></i>
+                        </div>
+                        <button onclick="triggerLogoUpload()" class="admin-only hidden absolute -bottom-1 -right-1 bg-cyan-500 text-slate-950 w-4 h-4 rounded-full flex items-center justify-center text-[9px] shadow" title="Upload Picture">
+                            <i class="fa-solid fa-camera"></i>
+                        </button>
+                    </div>
+                    <span class="text-xs sm:text-sm font-extrabold tracking-wide text-slate-100 truncate">Eastern Repair <span class="text-cyan-400">Team</span></span>
+                </div>
+                <!-- Hidden file input for team logo -->
+    <input type="file" id="team-logo-input" accept="image/*" onchange="handleTeamLogoUpload(this)" class="hidden">
+    <!-- Hidden file input for direct worker photo upload from directory cards -->
+    <input type="file" id="worker-direct-photo-input" accept="image/*" onchange="handleDirectWorkerPhotoUpload(this)" class="hidden">
+    <!-- Close Mobile Sidebar Button -->
+                <button onclick="toggleMobileSidebar()" class="md:hidden text-slate-400 hover:text-white p-2">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Navigation Links -->
+            <nav class="p-4 space-y-1">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 bg-cyan-500 text-slate-950 font-semibold shadow-md shadow-cyan-500/10">
+                    <i class="fa-solid fa-chart-pie w-5 text-center"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button onclick="switchTab('records')" id="nav-records" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-list-check w-5 text-center"></i>
+                    <span>Production Logs</span>
+                </button>
+                <button onclick="switchTab('workers')" id="nav-workers" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-users w-5 text-center"></i>
+                    <span>Personnel & Duty Days</span>
+                </button>
+                <button onclick="switchTab('directory')" id="nav-directory" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-address-card w-5 text-center"></i>
+                    <span>Personnel Info</span>
+                </button>
+                <button onclick="switchTab('fleet')" id="nav-fleet" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-truck-front w-5 text-center"></i>
+                    <span>Fleet Data</span>
+                </button>
+                <button onclick="switchTab('updates')" id="nav-updates" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-bullhorn w-5 text-center"></i>
+                    <span>Advance Updates</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Sidebar Footer Status -->
+        <div class="p-4 border-t border-slate-800 text-xs text-slate-500 flex items-center justify-between">
+            <span class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                System Dark Live
+            </span>
+            <span>v3.1.0</span>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-950 w-full">
+        
+        <!-- Top App Bar with Mobile Menu Toggle -->
+        <header class="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 sm:px-6 flex-shrink-0">
+            <div class="flex items-center gap-3">
+                <!-- Hamburger Menu Button for Mobile -->
+                <button onclick="toggleMobileSidebar()" class="md:hidden text-slate-300 hover:text-white p-2 rounded-xl bg-slate-800 border border-slate-700">
+                    <i class="fa-solid fa-bars text-base"></i>
+                </button>
+                <h1 id="page-title" class="text-base sm:text-xl font-bold text-slate-100 truncate">Dashboard Overview</h1>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- Admin Security Lock Switch Button -->
+                <button id="admin-toggle-btn" onclick="toggleAdminMode()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/40 text-xs sm:text-sm font-semibold px-3 py-2 sm:px-4 sm:py-2 rounded-xl flex items-center gap-2 shadow-sm transition">
+                    <i id="admin-lock-icon" class="fa-solid fa-lock"></i>
+                    <span id="admin-toggle-text" class="hidden sm:inline">View Only Mode</span>
+                </button>
+                <button onclick="exportToCSV()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold px-3 py-2 sm:px-4 sm:py-2 rounded-xl flex items-center gap-2 shadow-sm transition">
+                    <i class="fa-solid fa-file-csv"></i>
+                    <span class="hidden sm:inline">Export CSV</span>
+                </button>
+                <button onclick="openModal('production-modal')" class="admin-only hidden bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs sm:text-sm font-bold px-3 py-2 sm:px-4 sm:py-2 rounded-xl flex items-center gap-2 shadow-sm shadow-cyan-500/20 transition">
+                    <i class="fa-solid fa-plus"></i>
+                    <span class="hidden sm:inline">Log Production</span>
+                </button>
+                <button onclick="openModal('worker-modal')" class="admin-only hidden bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-semibold px-3 py-2 sm:px-4 sm:py-2 rounded-xl flex items-center gap-2 transition border border-slate-700">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span class="hidden sm:inline">Add Worker</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Dynamic Content Scroll View -->
+        <div class="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+
+            <!-- GLOBAL DATE FILTER / CALENDAR NAVIGATOR -->
+            <div class="bg-slate-900 border border-slate-800 p-3 sm:p-4 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-lg">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 sm:p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-cyan-400 flex-shrink-0">
+                        <i class="fa-solid fa-calendar-days text-base sm:text-lg"></i>
+                    </div>
+                    <div>
+                        <span class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400 block">Active Date View</span>
+                        <span id="selected-date-display" class="text-xs sm:text-sm font-bold text-slate-100">All Dates (Historical)</span>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <button onclick="navigateDate(-1)" class="flex-1 sm:flex-none px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-chevron-left text-[10px]"></i> Prev
+                    </button>
+                    <input type="date" id="global-date-picker" onchange="handleDateSelect(this.value)" class="bg-slate-950 border border-slate-800 text-slate-200 px-2.5 py-1.5 rounded-xl text-xs font-medium focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                    <button onclick="navigateDate(1)" class="flex-1 sm:flex-none px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1">
+                        Next <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                    </button>
+                    <button onclick="setTodayDate()" class="px-2.5 py-1.5 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 rounded-xl text-xs font-bold transition">
+                        Today
+                    </button>
+                    <button onclick="clearDateFilter()" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition">
+                        Show All
+                    </button>
+                </div>
+            </div>
+
+            <!-- TAB 1: DASHBOARD VIEW -->
+            <div id="tab-dashboard" class="tab-content space-y-4 sm:space-y-6">
+                <!-- KPI Summary Cards Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
+                    <!-- Total Installs -->
+                    <div class="bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-800 shadow-sm flex items-center gap-2.5">
+                        <div class="p-2.5 sm:p-3 bg-cyan-950 border border-cyan-800 text-cyan-400 rounded-xl flex-shrink-0">
+                            <i class="fa-solid fa-download text-base sm:text-xl"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[9px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider truncate">Total Installs</p>
+                            <h3 id="stat-total-installs" class="text-base sm:text-xl font-bold text-slate-100">0</h3>
+                            <p id="stat-avg-installs" class="text-[9px] sm:text-[11px] text-slate-500 truncate">Avg 0 / log</p>
+                        </div>
+                    </div>
+                    <!-- Total Restored -->
+                    <div class="bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-800 shadow-sm flex items-center gap-2.5">
+                        <div class="p-2.5 sm:p-3 bg-purple-950 border border-purple-800 text-purple-400 rounded-xl flex-shrink-0">
+                            <i class="fa-solid fa-rotate-left text-base sm:text-xl"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[9px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider truncate">Total Restored</p>
+                            <h3 id="stat-total-restored" class="text-base sm:text-xl font-bold text-slate-100">0</h3>
+                            <p id="stat-avg-restored" class="text-[9px] sm:text-[11px] text-slate-500 truncate">Avg 0 / log</p>
+                        </div>
+                    </div>
+                    <!-- Daily Attendance -->
+                    <div class="bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-800 shadow-sm flex items-center gap-2.5">
+                        <div class="p-2.5 sm:p-3 bg-teal-950 border border-teal-800 text-teal-400 rounded-xl flex-shrink-0">
+                            <i class="fa-solid fa-clipboard-user text-base sm:text-xl"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[9px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider truncate">Attendance</p>
+                            <h3 id="stat-total-attendance" class="text-base sm:text-xl font-bold text-slate-100 truncate">0 Present</h3>
+                            <p id="stat-attendance-rate" class="text-[9px] sm:text-[11px] text-slate-500 truncate">100% Rate</p>
+                        </div>
+                    </div>
+                    <!-- Total Duty Days -->
+                    <div class="bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-800 shadow-sm flex items-center gap-2.5">
+                        <div class="p-2.5 sm:p-3 bg-indigo-950 border border-indigo-800 text-indigo-400 rounded-xl flex-shrink-0">
+                            <i class="fa-solid fa-calendar-check text-base sm:text-xl"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[9px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider truncate">Duty Days</p>
+                            <h3 id="stat-duty-days" class="text-base sm:text-xl font-bold text-slate-100">0</h3>
+                            <p id="stat-duty-desc" class="text-[9px] sm:text-[11px] text-slate-500 truncate">Active days</p>
+                        </div>
+                    </div>
+                    <!-- Active Personnel -->
+                    <div class="bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-800 shadow-sm flex items-center gap-2.5">
+                        <div class="p-2.5 sm:p-3 bg-emerald-950 border border-emerald-800 text-emerald-400 rounded-xl flex-shrink-0">
+                            <i class="fa-solid fa-users-gear text-base sm:text-xl"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-[9px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider truncate">Active Workers</p>
+                            <h3 id="stat-active-workers" class="text-base sm:text-xl font-bold text-slate-100">0</h3>
+                            <p class="text-[9px] sm:text-[11px] text-slate-500 truncate">Staff</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TECHNICIAN DUTY & ATTENDANCE DASHBOARD BREAKDOWN CARD -->
+                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-800">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                                <i class="fa-solid fa-chart-column text-indigo-400"></i> Personnel Duty & Attendance Graph
+                            </h2>
+                            <p class="text-xs text-slate-400">Stacked attendance breakdown (Present, Absent, Rest Day, Vacation Leave, Sick Leave) per person</p>
+                        </div>
+                        <span class="text-xs bg-indigo-950 text-indigo-300 font-bold px-3 py-1 rounded-full border border-indigo-800">
+                            Stacked Attendance View
+                        </span>
+                    </div>
+
+                    <div class="h-80 sm:h-96">
+                        <canvas id="chart-duty-attendance"></canvas>
+                    </div>
+
+                    <!-- Attendance Numerical Breakdown Summary Table -->
+                    <div class="pt-4 border-t border-slate-800 space-y-2">
+                        <span class="text-xs font-bold text-slate-200 uppercase tracking-wider block">Attendance Days Summary Breakdown</span>
+                        <div class="overflow-x-auto rounded-xl border border-slate-800">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-950 text-slate-400 border-b border-slate-800 font-semibold uppercase tracking-wider">
+                                        <th class="py-2.5 px-3">Technician</th>
+                                        <th class="py-2.5 px-3 text-center text-emerald-400">Present (Duty)</th>
+                                        <th class="py-2.5 px-3 text-center text-rose-400">Absent</th>
+                                        <th class="py-2.5 px-3 text-center text-slate-300">Rest Day</th>
+                                        <th class="py-2.5 px-3 text-center text-cyan-400">Vacation Leave</th>
+                                        <th class="py-2.5 px-3 text-center text-purple-400">Sick Leave</th>
+                                        <th class="py-2.5 px-3 text-center text-amber-400">Total Logs</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="duty-attendance-table-body" class="divide-y divide-slate-800/60 text-slate-200">
+                                    <!-- Dynamically populated in JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interactive Charts Section -->
+                <div class="grid grid-cols-1 gap-6">
+                    <!-- Daily Trend Line Chart -->
+                    <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-sm">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-base font-bold text-slate-100">Daily Installs vs Restored Trend</h2>
+                            <span class="text-xs text-slate-400">Daily Aggregates</span>
+                        </div>
+                        <div class="h-64 sm:h-72">
+                            <canvas id="chart-daily-trend"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Monthly Restore Breakdown Chart -->
+                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-800">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                                <i class="fa-solid fa-chart-column text-purple-400"></i> Monthly Restore Breakdown Chart
+                            </h2>
+                            <p class="text-xs text-slate-400">Monthly stacked restore output per Repair Team technician</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="monthly-restore-leader-badge" class="text-xs bg-purple-950 text-purple-300 font-bold px-3 py-1 rounded-full border border-purple-800">
+                                Leading: N/A
+                            </span>
+                            <span class="text-xs bg-slate-950 text-slate-300 font-bold px-3 py-1 rounded-full border border-slate-800">
+                                Visual Chart View
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Clean Visual Canvas Area -->
+                    <div class="h-80 sm:h-96">
+                        <canvas id="chart-monthly-restore"></canvas>
+                    </div>
+
+                    <!-- Personnel Legend placed cleanly at the bottom -->
+                    <div class="pt-3 border-t border-slate-800">
+                        <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">Repair Team Technicians</span>
+                        <div id="monthly-restore-legend" class="flex flex-wrap items-center gap-2 text-xs">
+                            <!-- Dynamic technician badges populated in JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: RECORDS / DATA TABLE VIEW -->
+            <div id="tab-records" class="tab-content space-y-4 hidden">
+                <!-- Table Controls (Filter & Search) -->
+                <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+                    <!-- Search Input -->
+                    <div class="relative w-full md:w-72">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+                        <input type="text" id="table-search" placeholder="Search worker, notes..." oninput="renderTable()" class="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition">
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+                        <select id="filter-status" onchange="renderTable()" class="bg-slate-950 border border-slate-800 text-sm text-slate-300 px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                            <option value="ALL">All Statuses</option>
+                            <option value="Present">Present</option>
+                            <option value="Absent">Absent</option>
+                            <option value="Rest Day">Rest Day</option>
+                            <option value="Vacation Leave">Vacation Leave</option>
+                            <option value="Sick Leave">Sick Leave</option>
+                        </select>
+                        <select id="filter-worker" onchange="renderTable()" class="bg-slate-950 border border-slate-800 text-sm text-slate-300 px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                            <option value="ALL">All Workers</option>
+                        </select>
+                        <button onclick="clearAllData()" class="text-xs text-red-400 hover:text-red-300 font-semibold px-2 py-1 rounded hover:bg-red-950/50 transition" title="Clear all data">
+                            <i class="fa-solid fa-trash-arrow-up mr-1"></i> Reset Data
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Table Wrapper -->
+                <div class="bg-slate-900 rounded-2xl border border-slate-800 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-950 text-slate-400 border-b border-slate-800 font-semibold text-xs tracking-wider uppercase">
+                                    <th class="py-3.5 px-4 cursor-pointer hover:text-slate-200" onclick="sortTable('date')">Date <i class="fa-solid fa-sort text-xs ml-1"></i></th>
+                                    <th class="py-3.5 px-4 cursor-pointer hover:text-slate-200" onclick="sortTable('workerName')">Worker <i class="fa-solid fa-sort text-xs ml-1"></i></th>
+                                    <th class="py-3.5 px-4 cursor-pointer hover:text-slate-200 text-teal-400" onclick="sortTable('attendance')">Attendance <i class="fa-solid fa-sort text-xs ml-1"></i></th>
+                                    <th class="py-3.5 px-4 cursor-pointer hover:text-slate-200 text-cyan-400" onclick="sortTable('installs')">Installs <i class="fa-solid fa-sort text-xs ml-1"></i></th>
+                                    <th class="py-3.5 px-4 cursor-pointer hover:text-slate-200 text-purple-400" onclick="sortTable('restored')">Restored <i class="fa-solid fa-sort text-xs ml-1"></i></th>
+                                    <th class="py-3.5 px-4 cursor-pointer hover:text-slate-200" onclick="sortTable('totalUnits')">Total Combined <i class="fa-solid fa-sort text-xs ml-1"></i></th>
+                                    <th class="py-3.5 px-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="records-tbody" class="divide-y divide-slate-800 text-slate-300">
+                                <!-- Dynamic Rows Inserted Here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Empty State Marker -->
+                    <div id="table-empty" class="hidden p-8 text-center text-slate-500">
+                        <i class="fa-solid fa-folder-open text-4xl mb-2 text-slate-700"></i>
+                        <p class="text-sm">No daily log records match your filter criteria.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: WORKER MANAGEMENT -->
+            <div id="tab-workers" class="tab-content space-y-4 hidden">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-100">Repair Team</h2>
+                        <p class="text-xs text-slate-400">Detailed breakdown of total duty days, attendance records, total installs, and total restored per technician</p>
+                    </div>
+                    <button onclick="openModal('worker-modal')" class="admin-only hidden bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition">
+                        <i class="fa-solid fa-user-plus"></i> New Worker
+                    </button>
+                </div>
+                
+                <!-- All Technicians Consolidated under Repair Team Grid -->
+                <div id="workers-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Dynamic Worker Cards Inserted Here -->
+                </div>
+            </div>
+
+            <!-- TAB 4: PERSONNEL DIRECTORY & INFORMATION -->
+            <div id="tab-directory" class="tab-content space-y-4 hidden">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-100">Personnel Profiles & Photo Directory</h2>
+                        <p class="text-xs text-slate-400">View team photo profiles, assigned roles, departments, and skill badges</p>
+                    </div>
+                    <button onclick="openModal('worker-modal')" class="admin-only hidden bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition">
+                        <i class="fa-solid fa-user-plus"></i> Add / Edit Info
+                    </button>
+                </div>
+
+                <div id="directory-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
+                    <!-- Dynamic Personnel Cards Inserted Here -->
+                </div>
+            </div>
+
+            <!-- TAB 5: FLEET DATA & VEHICLE DIRECTORY -->
+            <div id="tab-fleet" class="tab-content space-y-4 hidden">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-100">Fleet Data & Repair Vehicles</h2>
+                        <p class="text-xs text-slate-400">Manage vehicle details, assigned technicians, fuel types, and maintenance schedules</p>
+                    </div>
+                    <button onclick="openModal('fleet-modal')" class="admin-only hidden bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition">
+                        <i class="fa-solid fa-plus"></i> Add Vehicle
+                    </button>
+                </div>
+
+                <div id="fleet-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Dynamic Fleet Cards Rendered Here -->
+                </div>
+            </div>
+
+            <!-- TAB 6: ADVANCE TEAM UPDATES & ANNOUNCEMENTS -->
+            <div id="tab-updates" class="tab-content space-y-4 hidden">
+                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-slate-800">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                <i class="fa-solid fa-bullhorn text-cyan-400"></i> Advance Team Updates & Announcements
+                            </h2>
+                            <p class="text-xs text-slate-400">Post upcoming schedule changes, notices, and operational announcements for the field team</p>
+                        </div>
+                        <button onclick="openModal('update-modal')" class="admin-only hidden bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition">
+                            <i class="fa-solid fa-plus"></i> Post Update
+                        </button>
+                    </div>
+
+                    <div id="updates-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Dynamic Updates Rendered Here -->
+                    </div>
+                </div>
+
+                <!-- SATURDAY - SUNDAY WEEKEND SCHEDULE SECTION -->
+                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-slate-800">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2.5 rounded-xl bg-purple-950 border border-purple-800 text-purple-400">
+                                <i class="fa-solid fa-camera-retro text-lg"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                    Saturday - Sunday Weekend Schedule
+                                </h2>
+                                <p class="text-xs text-slate-400">Weekend schedule snapshots organized with Saturday on the Left and Sunday on the Right</p>
+                            </div>
+                        </div>
+                        <button onclick="openModal('weekend-schedule-modal')" class="admin-only hidden bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm shadow-purple-600/20 transition">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Upload Weekend Photo
+                        </button>
+                    </div>
+
+                    <!-- Side-by-Side Day Header Indicators -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-center font-extrabold text-sm tracking-wider uppercase">
+                        <div class="py-2.5 px-4 rounded-xl bg-purple-950/60 border border-purple-800/80 text-purple-300 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-calendar-day"></i> Saturday Schedule
+                        </div>
+                        <div class="py-2.5 px-4 rounded-xl bg-cyan-950/60 border border-cyan-800/80 text-cyan-300 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-calendar-day"></i> Sunday Schedule
+                        </div>
+                    </div>
+
+                    <!-- Weekend Schedule Photo Grid View (Side-by-Side Saturday & Sunday Columns) -->
+                    <div id="weekend-schedule-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Saturday column (Left) & Sunday column (Right) rendered dynamically -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- LOG PRODUCTION MODAL -->
+    <div id="production-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div class="px-6 py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
+                <h3 class="text-base font-bold text-slate-100"><i class="fa-solid fa-pen-to-square text-cyan-400 mr-2"></i>Log Daily Production</h3>
+                <button onclick="closeModal('production-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="production-form" onsubmit="handleSaveProduction(event)" class="p-6 space-y-4">
+                <input type="hidden" id="edit-log-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Date</label>
+                    <input type="date" id="log-date" required class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Worker</label>
+                    <select id="log-worker" required class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Attendance Status</label>
+                    <select id="log-attendance" required onchange="handleAttendanceChange(this.value)" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                        <option value="Present">Present</option>
+                        <option value="Absent">Absent</option>
+                        <option value="Rest Day">Rest Day</option>
+                        <option value="Vacation Leave">Vacation Leave</option>
+                        <option value="Sick Leave">Sick Leave</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Installs</label>
+                        <input type="number" min="0" id="log-installs" value="0" required class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Restored</label>
+                        <input type="number" min="0" id="log-restored" value="0" required class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Notes / Remarks</label>
+                    <textarea id="log-notes" rows="2" placeholder="Optional comments..." class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none"></textarea>
+                </div>
+                <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
+                    <button type="button" onclick="closeModal('production-modal')" class="px-4 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-xl text-sm font-semibold transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-cyan-500 text-slate-950 hover:bg-cyan-400 rounded-xl text-sm font-bold shadow-md shadow-cyan-500/20 transition">Save Log</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- WORKER MODAL -->
+    <div id="worker-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div class="px-6 py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
+                <h3 class="text-base font-bold text-slate-100"><i class="fa-solid fa-user-plus text-cyan-400 mr-2"></i>Worker Profile Details</h3>
+                <button onclick="closeModal('worker-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="worker-form" onsubmit="handleSaveWorker(event)" class="p-6 space-y-4">
+                <input type="hidden" id="edit-worker-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Full Name</label>
+                    <input type="text" id="worker-name" required placeholder="e.g. Amnel Mapait" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Job Role / Title</label>
+                    <input type="text" id="worker-role" required placeholder="e.g. Lead Technician" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Department / Team</label>
+                    <select id="worker-dept" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                        <option value="Repair Team">Repair Team</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Upload Profile Picture</label>
+                    <input type="file" id="worker-photo-file" accept="image/*" onchange="previewWorkerImage(this)" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-xs focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                    <input type="hidden" id="worker-photo-data">
+                </div>
+                <div id="worker-photo-preview-container" class="hidden border border-slate-800 rounded-xl p-2 bg-slate-950 flex flex-col items-center gap-2">
+                    <img id="worker-photo-preview" src="" class="w-24 h-24 rounded-xl object-cover border border-slate-700">
+                    <button type="button" onclick="clearWorkerPhotoPreview()" class="text-xs text-red-400 hover:text-red-300">Remove Photo</button>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Or Photo URL</label>
+                    <input type="url" id="worker-photo" placeholder="https://..." oninput="handlePhotoUrlInput(this.value)" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                </div>
+                <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
+                    <button type="button" onclick="closeModal('worker-modal')" class="px-4 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-xl text-sm font-semibold transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-cyan-500 text-slate-950 hover:bg-cyan-400 rounded-xl text-sm font-bold shadow-md shadow-cyan-500/20 transition">Save Worker</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- FLEET MODAL -->
+    <div id="fleet-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div class="px-6 py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
+                <h3 class="text-base font-bold text-slate-100"><i class="fa-solid fa-truck-front text-cyan-400 mr-2"></i>Fleet Vehicle Details</h3>
+                <button onclick="closeModal('fleet-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="fleet-form" onsubmit="handleSaveFleet(event)" class="p-6 space-y-4">
+                <input type="hidden" id="edit-fleet-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Vehicle Designation / Name</label>
+                    <input type="text" id="fleet-name" required placeholder="e.g. Service Truck A" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Plate Number</label>
+                    <input type="text" id="fleet-plate" required placeholder="e.g. ABC-1234" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Vehicle Type</label>
+                        <input type="text" id="fleet-type" placeholder="e.g. Utility Van" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Fuel Type</label>
+                        <select id="fleet-fuel" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                            <option value="Diesel">Diesel</option>
+                            <option value="Unleaded">Unleaded</option>
+                            <option value="Electric">Electric</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Team Leader</label>
+                    <input type="text" id="fleet-leader" placeholder="e.g. Amnel Mapait" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Status</label>
+                    <select id="fleet-status" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                        <option value="Active">Active / On Road</option>
+                        <option value="Standby">Standby / Available</option>
+                        <option value="In Maintenance">In Maintenance</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
+                    <button type="button" onclick="closeModal('fleet-modal')" class="px-4 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-xl text-sm font-semibold transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-cyan-500 text-slate-950 hover:bg-cyan-400 rounded-xl text-sm font-bold shadow-md shadow-cyan-500/20 transition">Save Vehicle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- UPDATE MODAL -->
+    <div id="update-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div class="px-6 py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
+                <h3 class="text-base font-bold text-slate-100"><i class="fa-solid fa-bullhorn text-cyan-400 mr-2"></i>Post Announcement</h3>
+                <button onclick="closeModal('update-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="update-form" onsubmit="handleSaveUpdate(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Title</label>
+                    <input type="text" id="update-title" required placeholder="e.g. Maintenance Notice" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Content / Details</label>
+                    <textarea id="update-content" rows="3" required placeholder="Announcement details..." class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none"></textarea>
+                </div>
+                <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
+                    <button type="button" onclick="closeModal('update-modal')" class="px-4 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-xl text-sm font-semibold transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-cyan-500 text-slate-950 hover:bg-cyan-400 rounded-xl text-sm font-bold shadow-md shadow-cyan-500/20 transition">Post Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- WEEKEND SCHEDULE MODAL -->
+    <div id="weekend-schedule-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div class="px-6 py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
+                <h3 class="text-base font-bold text-slate-100"><i class="fa-solid fa-camera-retro text-purple-400 mr-2"></i>Upload Weekend Schedule Photo</h3>
+                <button onclick="closeModal('weekend-schedule-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="weekend-schedule-form" onsubmit="handleSaveWeekendSchedule(event)" class="p-6 space-y-4">
+                <input type="hidden" id="edit-weekend-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Day</label>
+                    <select id="weekend-day" required class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                        <option value="Saturday">Saturday</option>
+                        <option value="Sunday">Sunday</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Schedule Photo / Image</label>
+                    <input type="file" id="weekend-image-input" accept="image/*" onchange="previewWeekendImage(this)" class="w-full bg-slate-950 border border-slate-800 text-slate-200 px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                    <input type="hidden" id="weekend-image-data">
+                </div>
+                <div id="weekend-image-preview-container" class="hidden border border-slate-800 rounded-xl p-2 bg-slate-950 flex flex-col items-center gap-2">
+                    <img id="weekend-image-preview" src="" class="max-h-48 rounded-lg object-contain">
+                    <button type="button" onclick="clearWeekendImagePreview()" class="text-xs text-red-400 hover:text-red-300">Remove Photo</button>
+                </div>
+                <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
+                    <button type="button" onclick="closeModal('weekend-schedule-modal')" class="px-4 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-xl text-sm font-semibold transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-purple-600 text-white hover:bg-purple-500 rounded-xl text-sm font-bold shadow-md shadow-purple-600/20 transition">Save Photo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ADMIN PASSCODE MODAL -->
+    <div id="admin-passcode-modal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
+            <div class="px-6 py-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
+                <h3 class="text-base font-bold text-amber-400 flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved"></i> Enter Admin Passcode
+                </h3>
+                <button onclick="closeModal('admin-passcode-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="admin-passcode-form" onsubmit="handleVerifyPasscode(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Passcode Required</label>
+                    <input type="password" id="admin-passcode-input" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-center tracking-widest text-lg font-bold px-3 py-2.5 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeModal('admin-passcode-modal')" class="px-4 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-xl text-xs font-semibold transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-amber-500 text-slate-950 hover:bg-amber-400 rounded-xl text-xs font-bold transition">Unlock Editing</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT APPLICATION LOGIC -->
+    <script>
+        // CORE APPLICATION STATE
+        const ADMIN_PASSCODE = "Mina1999"; // Admin Mode password set to Mina1999
+        let isAdminMode = false;
+
+        let teamLogo = localStorage.getItem('protrack_team_logo') || '';
+
+        // Initial Seed Workers Data
+        let seedWorkers = [
+            { id: 'w1', name: 'Amnel Mapait', role: 'Lead Technician', dept: 'Repair Team', photo: '' },
+            { id: 'w2', name: 'Charles Jim Castillo', role: 'Field Technician', dept: 'Repair Team', photo: '' },
+            { id: 'w3', name: 'Christian John Ramos', role: 'Field Technician', dept: 'Repair Team', photo: '' },
+            { id: 'w4', name: 'Cliford Javien', role: 'Repair Specialist', dept: 'Repair Team', photo: '' },
+            { id: 'w5', name: 'Elmer Evangelista', role: 'Field Technician', dept: 'Repair Team', photo: '' },
+            { id: 'w6', name: 'Gervie Hernandez', role: 'Repair Specialist', dept: 'Repair Team', photo: '' },
+            { id: 'w7', name: 'James Patrick Espiritu', role: 'Field Technician', dept: 'Repair Team', photo: '' },
+            { id: 'w8', name: 'Jan Michael Pajarito', role: 'System Inspector', dept: 'Repair Team', photo: '' },
+            { id: 'w9', name: 'Jayson Bascos', role: 'Field Technician', dept: 'Repair Team', photo: '' },
+            { id: 'w10', name: 'John Michael Sison', role: 'Repair Specialist', dept: 'Repair Team', photo: '' },
+            { id: 'w11', name: 'John Owen Ancheta', role: 'Field Technician', dept: 'Repair Team', photo: '' },
+            { id: 'w12', name: 'John Paul Siobal', role: 'Field Technician', dept: 'Repair Team', photo: '' },
+            { id: 'w13', name: 'Jose Mendi Jr.', role: 'Repair Tech', dept: 'Repair Team', photo: '' },
+            { id: 'w14', name: 'Manny Salisi', role: 'Repair Tech', dept: 'Repair Team', photo: '' },
+            { id: 'w15', name: 'Marsan Salvador', role: 'Repair Tech', dept: 'Repair Team', photo: '' },
+            { id: 'w16', name: 'Nathaniel Clemente', role: 'Repair Tech', dept: 'Repair Team', photo: '' },
+            { id: 'w17', name: 'Neil Abon', role: 'Repair Tech', dept: 'Repair Team', photo: '' },
+            { id: 'w18', name: 'Raymart John Candelario', role: 'Repair Tech', dept: 'Repair Team', photo: '' },
+            { id: 'w19', name: 'Roger Erick Viernes', role: 'Repair Tech', dept: 'Repair Team', photo: '' },
+            { id: 'w20', name: 'Victor Duco Jr.', role: 'Repair Tech', dept: 'Repair Team', photo: '' }
+        ];
+
+        let workers = JSON.parse(localStorage.getItem('protrack_workers')) || seedWorkers;
+        let activeDirectWorkerId = null;
+
+        // Seed Production Records Data
+        let records = JSON.parse(localStorage.getItem('protrack_records')) || [];
+
+        // Seed Fleet Data
+        let fleetVehicles = JSON.parse(localStorage.getItem('protrack_fleet')) || [
+            { id: 'f1', name: 'Service Truck A', plate: 'ABC-1234', type: 'Utility Van', fuel: 'Diesel', leader: 'Amnel Mapait', status: 'Active' },
+            { id: 'f2', name: 'Service Truck B', plate: 'XYZ-5678', type: 'Pickup Truck', fuel: 'Diesel', leader: 'Gervie Hernandez', status: 'Active' }
+        ];
+
+        // Seed Announcement Data
+        let teamUpdates = JSON.parse(localStorage.getItem('protrack_updates')) || [
+            { id: 'u1', title: 'System Maintenance Notice', content: 'Scheduled network check this Sunday at 08:00 AM.', date: new Date().toISOString().split('T')[0] }
+        ];
+
+        // Installation Team Personnel (Exclusive to Duty Days section)
+        const installationTeamMembers = [
+            'Algin Gabane Balanag', 'Bryan Ballesteros', 'Dickson Rappy Viterbo', 'Ferdinand Fernando',
+            'Gilbert Pablo', 'Jan Ausley Reclosado', 'Jason Biala', 'Jim Cris Cabal',
+            'John Erick Chan', 'John Lester Lapurga', 'John Paul Ayson', 'John Ray Ganzagan',
+            'Mark Anthony Oriña', 'Mark Bryan Antonio', 'Mark Noriel Agliam', 'Michael Mejia',
+            'Michael Novencido', 'Raniel Madrid', 'Rayvhen Clarence Baltazar', 'Remark Lumantas',
+            'Rogelio Manuel', 'Roldan Andrion', 'Romar Beltran', 'Salvador Moñuz',
+            'Victor Jeorge Seldo', 'Yunosuke Yoshimura'
+        ];
+
+        // Seed Weekend Schedule Slots Data (9 slots: 4 Saturday, 5 Sunday)
+        let weekendSchedule = JSON.parse(localStorage.getItem('protrack_weekend')) || [
+            { id: 'w_sat1', day: 'Saturday', title: 'Saturday Schedule Slot 1', image: '' },
+            { id: 'w_sat2', day: 'Saturday', title: 'Saturday Schedule Slot 2', image: '' },
+            { id: 'w_sat3', day: 'Saturday', title: 'Saturday Schedule Slot 3', image: '' },
+            { id: 'w_sat4', day: 'Saturday', title: 'Saturday Schedule Slot 4', image: '' },
+            { id: 'w_sat5', day: 'Saturday', title: 'Saturday Schedule Slot 5', image: '' },
+            { id: 'w_sun1', day: 'Sunday', title: 'Sunday Schedule Slot 1', image: '' },
+            { id: 'w_sun2', day: 'Sunday', title: 'Sunday Schedule Slot 2', image: '' },
+            { id: 'w_sun3', day: 'Sunday', title: 'Sunday Schedule Slot 3', image: '' },
+            { id: 'w_sun4', day: 'Sunday', title: 'Sunday Schedule Slot 4', image: '' },
+            { id: 'w_sun5', day: 'Sunday', title: 'Sunday Schedule Slot 5', image: '' }
+        ];
+
+        let selectedDate = '';
+        let sortConfig = { field: 'date', direction: 'desc' };
+
+        // Chart Instance Handles
+        let chartDutyAttendance = null;
+        let chartDailyTrend = null;
+        let chartMonthlyRestore = null;
+
+        // --- NAVIGATION & ADMIN LOGIC ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            const targetTab = document.getElementById(`tab-${tabId}`);
+            if (targetTab) targetTab.classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = 'nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-slate-200';
+            });
+
+            const activeNav = document.getElementById(`nav-${tabId}`);
+            if (activeNav) {
+                activeNav.className = 'nav-btn w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 bg-cyan-500 text-slate-950 font-semibold shadow-md shadow-cyan-500/10';
+            }
+
+            const titleMap = {
+                dashboard: 'Dashboard Overview',
+                records: 'Daily Production Logs',
+                workers: 'Personnel & Duty Days',
+                directory: 'Personnel Info',
+                fleet: 'Fleet Data & Repair Vehicles',
+                updates: 'Advance Team Updates & Announcements'
+            };
+            document.getElementById('page-title').textContent = titleMap[tabId] || 'Dashboard Overview';
+
+            if (tabId === 'dashboard') renderDashboard();
+            if (tabId === 'records') renderTable();
+            if (tabId === 'workers') renderWorkers();
+            if (tabId === 'directory') renderDirectory();
+            if (tabId === 'fleet') renderFleet();
+            if (tabId === 'updates') {
+                renderUpdates();
+                renderWeekendSchedule();
+            }
+
+            // Close mobile drawer on tab click
+            const sidebar = document.getElementById('app-sidebar');
+            const backdrop = document.getElementById('mobile-sidebar-backdrop');
+            if (sidebar) sidebar.classList.add('-translate-x-full');
+            if (backdrop) backdrop.classList.add('hidden');
+        }
+
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('app-sidebar');
+            const backdrop = document.getElementById('mobile-sidebar-backdrop');
+            if (sidebar) sidebar.classList.toggle('-translate-x-full');
+            if (backdrop) backdrop.classList.toggle('hidden');
+        }
+
+        function toggleAdminMode() {
+            if (isAdminMode) {
+                isAdminMode = false;
+                applyAdminUIState();
+                showToast('Admin Mode Disabled (View Only)', 'info');
+            } else {
+                openModal('admin-passcode-modal');
+            }
+        }
+
+        function handleVerifyPasscode(e) {
+            e.preventDefault();
+            const input = document.getElementById('admin-passcode-input');
+            if (input.value === ADMIN_PASSCODE) {
+                isAdminMode = true;
+                applyAdminUIState();
+                closeModal('admin-passcode-modal');
+                input.value = '';
+                showToast('Admin Editing Mode Unlocked!', 'success');
+            } else {
+                showToast('Incorrect Admin Passcode', 'error');
+                input.value = '';
+            }
+        }
+
+        function applyAdminUIState() {
+            const adminBtns = document.querySelectorAll('.admin-only');
+            const lockIcon = document.getElementById('admin-lock-icon');
+            const lockText = document.getElementById('admin-toggle-text');
+            const toggleBtn = document.getElementById('admin-toggle-btn');
+
+            if (isAdminMode) {
+                adminBtns.forEach(el => el.classList.remove('hidden'));
+                if (lockIcon) lockIcon.className = 'fa-solid fa-lock-open text-emerald-400';
+                if (lockText) lockText.textContent = 'Admin Mode Active';
+                if (toggleBtn) toggleBtn.className = 'bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/40 text-xs sm:text-sm font-semibold px-3 py-2 sm:px-4 sm:py-2 rounded-xl flex items-center gap-2 shadow-sm transition';
+            } else {
+                adminBtns.forEach(el => el.classList.add('hidden'));
+                if (lockIcon) lockIcon.className = 'fa-solid fa-lock';
+                if (lockText) lockText.textContent = 'View Only Mode';
+                if (toggleBtn) toggleBtn.className = 'bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/40 text-xs sm:text-sm font-semibold px-3 py-2 sm:px-4 sm:py-2 rounded-xl flex items-center gap-2 shadow-sm transition';
+            }
+        }
+
+        // --- TOAST NOTIFICATIONS & MODALS ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-emerald-900 border-emerald-700 text-emerald-100' :
+                            type === 'error' ? 'bg-rose-900 border-rose-700 text-rose-100' :
+                            'bg-slate-800 border-slate-700 text-slate-100';
+            toast.className = `px-4 py-3 rounded-xl border shadow-lg text-xs font-semibold flex items-center gap-2 transition-all duration-300 transform translate-y-2 pointer-events-auto ${bgClass}`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check' : type === 'error' ? 'fa-triangle-exclamation' : 'fa-circle-info'}"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function openModal(id) {
+            const m = document.getElementById(id);
+            if (m) m.classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            const m = document.getElementById(id);
+            if (m) m.classList.add('hidden');
+        }
+
+        // --- DATE FILTER & CALENDAR NAVIGATOR ---
+        function handleDateSelect(val) {
+            selectedDate = val;
+            updateDateDisplay();
+            renderDashboard();
+            renderTable();
+        }
+
+        function navigateDate(days) {
+            const curr = selectedDate ? new Date(selectedDate) : new Date();
+            curr.setDate(curr.getDate() + days);
+            selectedDate = curr.toISOString().split('T')[0];
+            document.getElementById('global-date-picker').value = selectedDate;
+            updateDateDisplay();
+            renderDashboard();
+            renderTable();
+        }
+
+        function setTodayDate() {
+            selectedDate = new Date().toISOString().split('T')[0];
+            document.getElementById('global-date-picker').value = selectedDate;
+            updateDateDisplay();
+            renderDashboard();
+            renderTable();
+        }
+
+        function clearDateFilter() {
+            selectedDate = '';
+            document.getElementById('global-date-picker').value = '';
+            updateDateDisplay();
+            renderDashboard();
+            renderTable();
+        }
+
+        function updateDateDisplay() {
+            const disp = document.getElementById('selected-date-display');
+            if (!disp) return;
+            disp.textContent = selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'All Dates (Historical)';
+        }
+
+        // --- LOGO MANAGEMENT ---
+        function triggerLogoUpload() {
+            document.getElementById('team-logo-input').click();
+        }
+
+        function handleTeamLogoUpload(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    teamLogo = e.target.result;
+                    localStorage.setItem('protrack_team_logo', teamLogo);
+                    renderTeamLogo();
+                    showToast('Team logo updated!', 'success');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function renderTeamLogo() {
+            const container = document.getElementById('team-logo-display');
+            if (!container) return;
+            if (teamLogo) {
+                container.innerHTML = `<img src="${teamLogo}" class="w-full h-full object-cover">`;
+            } else {
+                container.innerHTML = `<i class="fa-solid fa-wrench text-sm"></i>`;
+            }
+        }
+
+        // --- PRODUCTION LOGS HANDLERS ---
+        function populateWorkerSelect() {
+            const sel = document.getElementById('log-worker');
+            const filt = document.getElementById('filter-worker');
+            if (sel) {
+                sel.innerHTML = workers.map(w => `<option value="${w.name}">${w.name}</option>`).join('');
+            }
+            if (filt) {
+                filt.innerHTML = `<option value="ALL">All Workers</option>` + workers.map(w => `<option value="${w.name}">${w.name}</option>`).join('');
+            }
+        }
+
+        function handleAttendanceChange(val) {
+            const inst = document.getElementById('log-installs');
+            const rest = document.getElementById('log-restored');
+            if (val !== 'Present') {
+                if (inst) inst.value = 0;
+                if (rest) rest.value = 0;
+            }
+        }
+
+        function handleSaveProduction(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-log-id').value;
+            const record = {
+                id: id || 'rec_' + Date.now(),
+                date: document.getElementById('log-date').value,
+                workerName: document.getElementById('log-worker').value,
+                attendance: document.getElementById('log-attendance').value,
+                installs: parseInt(document.getElementById('log-installs').value) || 0,
+                restored: parseInt(document.getElementById('log-restored').value) || 0,
+                notes: document.getElementById('log-notes').value
+            };
+            record.totalUnits = record.installs + record.restored;
+
+            if (id) {
+                const idx = records.findIndex(r => r.id === id);
+                if (idx !== -1) records[idx] = record;
+            } else {
+                records.unshift(record);
+            }
+
+            localStorage.setItem('protrack_records', JSON.stringify(records));
+            closeModal('production-modal');
+            document.getElementById('production-form').reset();
+            document.getElementById('edit-log-id').value = '';
+            renderTable();
+            renderDashboard();
+            showToast('Production log saved successfully!', 'success');
+        }
+
+        function editRecord(id) {
+            const rec = records.find(r => r.id === id);
+            if (!rec) return;
+            document.getElementById('edit-log-id').value = rec.id;
+            document.getElementById('log-date').value = rec.date;
+            document.getElementById('log-worker').value = rec.workerName;
+            document.getElementById('log-attendance').value = rec.attendance;
+            document.getElementById('log-installs').value = rec.installs;
+            document.getElementById('log-restored').value = rec.restored;
+            document.getElementById('log-notes').value = rec.notes || '';
+            openModal('production-modal');
+        }
+
+        function deleteRecord(id) {
+            records = records.filter(r => r.id !== id);
+            localStorage.setItem('protrack_records', JSON.stringify(records));
+            renderTable();
+            renderDashboard();
+            renderWorkers();
+            showToast('Record deleted and removed from Dashboard', 'info');
+        }
+
+        function clearAllData() {
+            if (confirm('Are you sure you want to clear all recorded production logs?')) {
+                records = [];
+                localStorage.removeItem('protrack_records');
+                renderTable();
+                renderDashboard();
+                renderWorkers();
+                showToast('All production records cleared and removed from Dashboard', 'error');
+            }
+        }
+
+        function sortTable(field) {
+            if (sortConfig.field === field) {
+                sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortConfig.field = field;
+                sortConfig.direction = 'desc';
+            }
+            renderTable();
+        }
+
+        // --- DASHBOARD RENDERER & CHARTS ---
+        function renderDashboard() {
+            let filtered = records;
+            if (selectedDate) {
+                filtered = records.filter(r => r.date === selectedDate);
+            }
+
+            const totalInstalls = filtered.reduce((s, r) => s + (r.installs || 0), 0);
+            const totalRestored = filtered.reduce((s, r) => s + (r.restored || 0), 0);
+            const presentCount = filtered.filter(r => r.attendance === 'Present').length;
+            const dutyDays = new Set(filtered.map(r => r.date)).size;
+
+            document.getElementById('stat-total-installs').textContent = totalInstalls;
+            document.getElementById('stat-total-restored').textContent = totalRestored;
+            document.getElementById('stat-avg-installs').textContent = `Avg ${filtered.length ? (totalInstalls / filtered.length).toFixed(1) : 0} / log`;
+            document.getElementById('stat-avg-restored').textContent = `Avg ${filtered.length ? (totalRestored / filtered.length).toFixed(1) : 0} / log`;
+            document.getElementById('stat-total-attendance').textContent = `${presentCount} Present`;
+            document.getElementById('stat-duty-days').textContent = dutyDays;
+            document.getElementById('stat-active-workers').textContent = workers.length;
+
+            renderCharts(filtered);
+        }
+
+        function renderCharts(filteredRecords) {
+            // 1. Stacked Duty & Attendance Chart
+            const ctxDuty = document.getElementById('chart-duty-attendance');
+            if (ctxDuty) {
+                const workerNames = workers.map(w => w.name);
+                const presentData = workerNames.map(name => filteredRecords.filter(r => r.workerName === name && r.attendance === 'Present').length);
+                const absentData = workerNames.map(name => filteredRecords.filter(r => r.workerName === name && r.attendance === 'Absent').length);
+                const restData = workerNames.map(name => filteredRecords.filter(r => r.workerName === name && r.attendance === 'Rest Day').length);
+                const vlData = workerNames.map(name => filteredRecords.filter(r => r.workerName === name && r.attendance === 'Vacation Leave').length);
+                const slData = workerNames.map(name => filteredRecords.filter(r => r.workerName === name && r.attendance === 'Sick Leave').length);
+
+                // Populate Numerical Summary Table below chart
+                const summaryTbody = document.getElementById('duty-attendance-table-body');
+                if (summaryTbody) {
+                    summaryTbody.innerHTML = workerNames.map((name, i) => {
+                        const totalLogs = presentData[i] + absentData[i] + restData[i] + vlData[i] + slData[i];
+                        return `
+                            <tr class="hover:bg-slate-800/40 transition">
+                                <td class="py-2 px-3 font-semibold text-slate-100 truncate">${name}</td>
+                                <td class="py-2 px-3 text-center font-bold text-emerald-400">${presentData[i]}</td>
+                                <td class="py-2 px-3 text-center font-bold text-rose-400">${absentData[i]}</td>
+                                <td class="py-2 px-3 text-center font-semibold text-slate-300">${restData[i]}</td>
+                                <td class="py-2 px-3 text-center font-bold text-cyan-400">${vlData[i]}</td>
+                                <td class="py-2 px-3 text-center font-bold text-purple-400">${slData[i]}</td>
+                                <td class="py-2 px-3 text-center font-bold text-slate-100">${totalLogs}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+
+                if (chartDutyAttendance) chartDutyAttendance.destroy();
+                chartDutyAttendance = new Chart(ctxDuty, {
+                    type: 'bar',
+                    data: {
+                        labels: workerNames,
+                        datasets: [
+                            { label: 'Present', data: presentData, backgroundColor: '#10b981' },
+                            { label: 'Absent', data: absentData, backgroundColor: '#f43f5e' },
+                            { label: 'Rest Day', data: restData, backgroundColor: '#64748b' },
+                            { label: 'Vacation Leave', data: vlData, backgroundColor: '#06b6d4' },
+                            { label: 'Sick Leave', data: slData, backgroundColor: '#8b5cf6' }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { labels: { color: '#94a3b8' } } },
+                        scales: {
+                            x: { stacked: true, ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                            y: { stacked: true, ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+                        }
+                    }
+                });
+            }
+
+            // 2. Daily Trend Chart
+            const ctxTrend = document.getElementById('chart-daily-trend');
+            // 3. Monthly Restore Breakdown Chart (Synced with Production Logs per Repair Team member)
+            const ctxMonthly = document.getElementById('chart-monthly-restore');
+            if (ctxMonthly) {
+                // Group production records by YYYY-MM
+                const monthlyTotalsMap = {};
+                const workerRestoreTotals = {};
+
+                filteredRecords.forEach(r => {
+                    if (r.date) {
+                        const monthKey = r.date.substring(0, 7); // "YYYY-MM"
+                        if (!monthlyTotalsMap[monthKey]) {
+                            monthlyTotalsMap[monthKey] = {};
+                        }
+                        const restoredVal = parseInt(r.restored) || 0;
+                        monthlyTotalsMap[monthKey][r.workerName] = (monthlyTotalsMap[monthKey][r.workerName] || 0) + restoredVal;
+                        
+                        // Accumulate overall restore total per technician for leadership calculation
+                        workerRestoreTotals[r.workerName] = (workerRestoreTotals[r.workerName] || 0) + restoredVal;
+                    }
+                });
+
+                // Find top performer for Restored Units
+                let topRestorer = 'N/A';
+                let topRestoreCount = 0;
+                Object.entries(workerRestoreTotals).forEach(([wName, count]) => {
+                    if (count > topRestoreCount) {
+                        topRestoreCount = count;
+                        topRestorer = wName;
+                    }
+                });
+
+                const leaderBadge = document.getElementById('monthly-restore-leader-badge');
+                if (leaderBadge) {
+                    leaderBadge.textContent = topRestoreCount > 0 ? `Leading: 👑 ${topRestorer} (${topRestoreCount} restored)` : 'Leading: N/A';
+                }
+
+                // Sort month keys chronologically
+                const sortedMonths = Object.keys(monthlyTotalsMap).sort();
+
+                // Format labels for UI (e.g. "2026-03" -> "Mar 2026")
+                const monthLabels = sortedMonths.map(mKey => {
+                    const [year, month] = mKey.split('-');
+                    const dateObj = new Date(parseInt(year), parseInt(month) - 1, 1);
+                    return dateObj.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                });
+
+                // Unique color palette with 20 distinct high-contrast colors (one per technician, no repeats)
+                const palette = [
+                    '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ec4899', 
+                    '#3b82f6', '#14b8a6', '#f43f5e', '#a855f7', '#84cc16', 
+                    '#eab308', '#f97316', '#0284c7', '#d946ef', '#10b981', 
+                    '#6366f1', '#fb7185', '#38bdf8', '#a3e635', '#fb923c'
+                ];
+
+                const datasets = workers.map((w, idx) => {
+                    const data = sortedMonths.map(mKey => (monthlyTotalsMap[mKey] && monthlyTotalsMap[mKey][w.name]) ? monthlyTotalsMap[mKey][w.name] : 0);
+                    return {
+                        label: w.name,
+                        data: data,
+                        backgroundColor: palette[idx % palette.length],
+                        borderRadius: 4
+                    };
+                });
+
+                // Render bottom legend list for listed names
+                const legendContainer = document.getElementById('monthly-restore-legend');
+                if (legendContainer) {
+                    legendContainer.innerHTML = workers.map((w, idx) => {
+                        const totalRestored = workerRestoreTotals[w.name] || 0;
+                        const isLeader = w.name === topRestorer && topRestoreCount > 0;
+                        return `
+                            <div class="flex items-center gap-1.5 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 ${isLeader ? 'ring-1 ring-purple-500' : ''}">
+                                <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${palette[idx % palette.length]}"></span>
+                                <span class="text-slate-200 font-medium truncate max-w-[140px]">${w.name}</span>
+                                ${isLeader ? '<span class="text-[10px] text-amber-400">👑</span>' : ''}
+                                <span class="text-[10px] text-slate-500 font-mono">(${totalRestored})</span>
+                            </div>
+                        `;
+                    }).join('');
+                }
+
+                if (chartMonthlyRestore) chartMonthlyRestore.destroy();
+                chartMonthlyRestore = new Chart(ctxMonthly, {
+                    type: 'bar',
+                    data: {
+                        labels: monthLabels.length ? monthLabels : ['No Data'],
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }, // Hide default chart legend to keep canvas clean
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return ` ${context.dataset.label}: ${context.raw} restored`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { stacked: true, ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                            y: { 
+                                stacked: true,
+                                ticks: { color: '#94a3b8', precision: 0 }, 
+                                grid: { color: '#1e293b' },
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // --- RECORDS TABLE RENDERER ---
+        function renderTable() {
+            const tbody = document.getElementById('records-tbody');
+            const emptyMarker = document.getElementById('table-empty');
+            if (!tbody) return;
+
+            const searchVal = (document.getElementById('table-search')?.value || '').toLowerCase();
+            const statusFilter = document.getElementById('filter-status')?.value || 'ALL';
+            const workerFilter = document.getElementById('filter-worker')?.value || 'ALL';
+
+            let list = records.filter(r => {
+                if (selectedDate && r.date !== selectedDate) return false;
+                if (statusFilter !== 'ALL' && r.attendance !== statusFilter) return false;
+                if (workerFilter !== 'ALL' && r.workerName !== workerFilter) return false;
+                if (searchVal) {
+                    const matchWorker = (r.workerName || '').toLowerCase().includes(searchVal);
+                    const matchNotes = (r.notes || '').toLowerCase().includes(searchVal);
+                    if (!matchWorker && !matchNotes) return false;
+                }
+                return true;
+            });
+
+            // Sorting
+            list.sort((a, b) => {
+                let valA = a[sortConfig.field];
+                let valB = b[sortConfig.field];
+                if (typeof valA === 'string') valA = valA.toLowerCase();
+                if (typeof valB === 'string') valB = valB.toLowerCase();
+                if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            if (list.length === 0) {
+                tbody.innerHTML = '';
+                if (emptyMarker) emptyMarker.classList.remove('hidden');
+                return;
+            }
+
+            if (emptyMarker) emptyMarker.classList.add('hidden');
+
+            tbody.innerHTML = list.map(r => {
+                const attBadge = r.attendance === 'Present' ? 'bg-emerald-950 text-emerald-400 border-emerald-800' :
+                                 r.attendance === 'Absent' ? 'bg-rose-950 text-rose-400 border-rose-800' :
+                                 r.attendance === 'Rest Day' ? 'bg-slate-800 text-slate-300 border-slate-700' :
+                                 'bg-cyan-950 text-cyan-300 border-cyan-800';
+
+                return `
+                    <tr class="hover:bg-slate-800/50 transition">
+                        <td class="py-3 px-4 font-medium text-slate-200">${r.date}</td>
+                        <td class="py-3 px-4 font-bold text-slate-100">${r.workerName}</td>
+                        <td class="py-3 px-4">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold border ${attBadge}">
+                                ${r.attendance}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 font-bold text-cyan-400">${r.installs}</td>
+                        <td class="py-3 px-4 font-bold text-purple-400">${r.restored}</td>
+                        <td class="py-3 px-4 font-extrabold text-slate-100">${r.totalUnits || (r.installs + r.restored)}</td>
+                        <td class="py-3 px-4 text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <button onclick="editRecord('${r.id}')" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <button onclick="deleteRecord('${r.id}')" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-rose-950 hover:bg-rose-900 text-rose-300 px-2.5 py-1 rounded-lg border border-rose-800">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // --- WORKER ROSTER & DUTY DAYS ---
+        function renderWorkers() {
+            const grid = document.getElementById('workers-grid');
+            if (!grid) return;
+
+            grid.innerHTML = workers.map(w => {
+                const workerLogs = records.filter(r => r.workerName === w.name);
+                const totalInstalls = workerLogs.reduce((s, r) => s + (r.installs || 0), 0);
+                const totalRestored = workerLogs.reduce((s, r) => s + (r.restored || 0), 0);
+                const dutyDays = new Set(workerLogs.filter(r => r.attendance === 'Present').map(r => r.date)).size;
+
+                return `
+                    <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-sm flex flex-col justify-between space-y-3">
+                        <div class="flex items-center gap-3">
+                            <img src="${w.photo || 'https://placehold.co/100x100/111827/06b6d4?text=' + encodeURIComponent(w.name)}" class="w-12 h-12 rounded-xl object-cover border border-slate-700 flex-shrink-0" onerror="this.src='https://placehold.co/100x100/111827/06b6d4?text=Tech'">
+                            <div class="min-w-0 flex-1">
+                                <h3 class="font-bold text-slate-100 text-sm truncate">${w.name}</h3>
+                                <p class="text-xs text-slate-400 truncate">${w.role}</p>
+                                <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-800">${w.dept}</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800 text-center">
+                            <div class="bg-slate-950 p-2 rounded-xl border border-slate-800">
+                                <span class="text-[9px] text-slate-400 uppercase font-semibold block">Duty Days</span>
+                                <span class="text-xs font-bold text-slate-100">${dutyDays}</span>
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl border border-slate-800">
+                                <span class="text-[9px] text-cyan-400 uppercase font-semibold block">Installs</span>
+                                <span class="text-xs font-bold text-cyan-400">${totalInstalls}</span>
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl border border-slate-800">
+                                <span class="text-[9px] text-purple-400 uppercase font-semibold block">Restored</span>
+                                <span class="text-xs font-bold text-purple-400">${totalRestored}</span>
+                            </div>
+                        </div>
+                        <div class="pt-2 border-t border-slate-800 flex items-center justify-end gap-2">
+                            <button onclick="editWorker('${w.id}')" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-xl border border-slate-700 flex items-center gap-1 transition">
+                                <i class="fa-solid fa-user-pen"></i> Edit / Replace
+                            </button>
+                            <button onclick="removeWorker('${w.id}')" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-rose-950 hover:bg-rose-900 text-rose-300 px-2.5 py-1 rounded-xl border border-rose-800 flex items-center gap-1 transition">
+                                <i class="fa-solid fa-user-minus"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Render Installation Team Section with Matching Card Metrics Format & Action Controls
+            let instSection = document.getElementById('installation-team-section');
+            if (!instSection) {
+                instSection = document.createElement('div');
+                instSection.id = 'installation-team-section';
+                instSection.className = 'mt-8 pt-6 border-t border-slate-800 space-y-4';
+                grid.parentNode.appendChild(instSection);
+            }
+
+            instSection.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div class="h-8 w-1 bg-purple-500 rounded-full"></div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-100">Installation Team</h3>
+                        <p class="text-xs text-slate-400">Detailed breakdown of total duty days, attendance records, total installs, and total restored per installation technician</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    ${installationTeamMembers.map((name, idx) => {
+                        const instLogs = records.filter(r => r.workerName === name);
+                        const totalInstalls = instLogs.reduce((s, r) => s + (r.installs || 0), 0);
+                        const totalRestored = instLogs.reduce((s, r) => s + (r.restored || 0), 0);
+                        const dutyDays = new Set(instLogs.filter(r => r.attendance === 'Present').map(r => r.date)).size;
+
+                        return `
+                            <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-sm flex flex-col justify-between space-y-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-12 h-12 rounded-xl bg-purple-950 border border-purple-800 flex items-center justify-center text-purple-300 font-bold text-sm flex-shrink-0">
+                                        ${name.split(' ').map(n=>n[0]).join('').slice(0,2)}
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <h3 class="font-bold text-slate-100 text-sm truncate">${name}</h3>
+                                        <p class="text-xs text-slate-400 truncate">Installation Tech</p>
+                                        <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-950 text-purple-300 border border-purple-800">Installation Team</span>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800 text-center">
+                                    <div class="bg-slate-950 p-2 rounded-xl border border-slate-800">
+                                        <span class="text-[9px] text-slate-400 uppercase font-semibold block">Duty Days</span>
+                                        <span class="text-xs font-bold text-slate-100">${dutyDays}</span>
+                                    </div>
+                                    <div class="bg-slate-950 p-2 rounded-xl border border-slate-800">
+                                        <span class="text-[9px] text-cyan-400 uppercase font-semibold block">Installs</span>
+                                        <span class="text-xs font-bold text-cyan-400">${totalInstalls}</span>
+                                    </div>
+                                    <div class="bg-slate-950 p-2 rounded-xl border border-slate-800">
+                                        <span class="text-[9px] text-purple-400 uppercase font-semibold block">Restored</span>
+                                        <span class="text-xs font-bold text-purple-400">${totalRestored}</span>
+                                    </div>
+                                </div>
+                                <div class="pt-2 border-t border-slate-800 flex items-center justify-end gap-2">
+                                    <button onclick="editInstallationMember(${idx})" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-xl border border-slate-700 flex items-center gap-1 transition">
+                                        <i class="fa-solid fa-pen"></i> Edit / Replace
+                                    </button>
+                                    <button onclick="removeInstallationMember(${idx})" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-rose-950 hover:bg-rose-900 text-rose-300 px-2.5 py-1 rounded-xl border border-rose-800 flex items-center gap-1 transition">
+                                        <i class="fa-solid fa-user-minus"></i> Remove
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function editInstallationMember(index) {
+            const currentName = installationTeamMembers[index];
+            const newName = prompt('Enter new Technician Name:', currentName);
+            if (newName && newName.trim() !== '') {
+                installationTeamMembers[index] = newName.trim();
+                renderWorkers();
+                showToast('Installation technician updated!', 'success');
+            }
+        }
+
+        function removeInstallationMember(index) {
+            if (confirm(`Remove ${installationTeamMembers[index]} from Installation Team?`)) {
+                installationTeamMembers.splice(index, 1);
+                renderWorkers();
+                showToast('Installation technician removed', 'info');
+            }
+        }
+
+        // --- PERSONNEL DIRECTORY ---
+        function renderDirectory() {
+            const grid = document.getElementById('directory-grid');
+            if (!grid) return;
+
+            grid.innerHTML = workers.map(w => `
+                <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-sm flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                    <div class="relative group flex-shrink-0 ${isAdminMode ? 'cursor-pointer' : ''}" onclick="${isAdminMode ? `triggerDirectWorkerPhotoUpload('${w.id}')` : ''}" title="${isAdminMode ? 'Click to upload profile photo' : 'Admin access required to upload photo'}">
+                        <img src="${w.photo || 'https://placehold.co/200x200/111827/06b6d4?text=' + encodeURIComponent(w.name)}" class="w-36 h-36 sm:w-44 sm:h-44 rounded-2xl object-cover border-2 border-slate-700 ${isAdminMode ? 'group-hover:border-cyan-400' : ''} transition shadow-md flex-shrink-0" onerror="this.src='https://placehold.co/200x200/111827/06b6d4?text=Technician'">
+                        ${isAdminMode ? `
+                            <div class="absolute inset-0 bg-slate-950/60 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-cyan-400 gap-1.5 p-2 text-center">
+                                <i class="fa-solid fa-camera text-2xl"></i>
+                                <span class="text-[11px] font-bold text-white uppercase tracking-wider">Change Photo</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="flex-1 text-center sm:text-left space-y-2 min-w-0 w-full">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                            <h3 class="text-lg sm:text-xl font-bold text-slate-100 truncate">${w.name}</h3>
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-cyan-950 text-cyan-300 border border-cyan-800 self-center sm:self-auto">${w.dept}</span>
+                        </div>
+                        <p class="text-sm font-medium text-slate-400">${w.role}</p>
+                        <div class="pt-3 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                            <button onclick="triggerDirectWorkerPhotoUpload('${w.id}')" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-cyan-950 hover:bg-cyan-900 text-cyan-300 px-3 py-1.5 rounded-xl border border-cyan-800 flex items-center gap-1.5 transition">
+                                <i class="fa-solid fa-upload"></i> Upload Photo
+                            </button>
+                            <button onclick="editWorker('${w.id}')" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl border border-slate-700 flex items-center gap-1.5 transition">
+                                <i class="fa-solid fa-user-pen"></i> Edit / Replace
+                            </button>
+                            <button onclick="removeWorker('${w.id}')" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-rose-950 hover:bg-rose-900 text-rose-300 px-3 py-1.5 rounded-xl border border-rose-800 flex items-center gap-1.5 transition">
+                                <i class="fa-solid fa-user-minus"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // DIRECT PHOTO UPLOAD FROM CARD (LOCKED TO ADMIN ONLY)
+        function triggerDirectWorkerPhotoUpload(workerId) {
+            if (!isAdminMode) {
+                showToast('Admin Mode required to upload or edit photos!', 'error');
+                return;
+            }
+            activeDirectWorkerId = workerId;
+            document.getElementById('worker-direct-photo-input').click();
+        }
+
+        function handleDirectWorkerPhotoUpload(input) {
+            if (!isAdminMode) {
+                showToast('Admin Mode required to upload or edit photos!', 'error');
+                return;
+            }
+            if (input.files && input.files[0] && activeDirectWorkerId) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const photoData = e.target.result;
+                    const idx = workers.findIndex(w => w.id === activeDirectWorkerId);
+                    if (idx !== -1) {
+                        workers[idx].photo = photoData;
+                        localStorage.setItem('protrack_workers', JSON.stringify(workers));
+                        renderWorkers();
+                        renderDirectory();
+                        showToast(`Updated photo for ${workers[idx].name}!`, 'success');
+                    }
+                    input.value = '';
+                    activeDirectWorkerId = null;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // MODAL PHOTO PREVIEW & INPUT HANDLERS
+        function previewWorkerImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('worker-photo-data').value = e.target.result;
+                    document.getElementById('worker-photo-preview').src = e.target.result;
+                    document.getElementById('worker-photo-preview-container').classList.remove('hidden');
+                    document.getElementById('worker-photo').value = '';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function handlePhotoUrlInput(url) {
+            if (url) {
+                document.getElementById('worker-photo-data').value = url;
+                document.getElementById('worker-photo-preview').src = url;
+                document.getElementById('worker-photo-preview-container').classList.remove('hidden');
+            }
+        }
+
+        function clearWorkerPhotoPreview() {
+            document.getElementById('worker-photo-file').value = '';
+            document.getElementById('worker-photo-data').value = '';
+            document.getElementById('worker-photo').value = '';
+            document.getElementById('worker-photo-preview').src = '';
+            document.getElementById('worker-photo-preview-container').classList.add('hidden');
+        }
+
+        function handleSaveWorker(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-worker-id').value;
+            const name = document.getElementById('worker-name').value;
+            const role = document.getElementById('worker-role').value;
+            const dept = document.getElementById('worker-dept').value;
+            const photo = document.getElementById('worker-photo-data').value || document.getElementById('worker-photo').value;
+
+            if (id) {
+                const idx = workers.findIndex(w => w.id === id);
+                if (idx !== -1) {
+                    workers[idx] = { id, name, role, dept, photo };
+                }
+            } else {
+                workers.push({ id: 'w_' + Date.now(), name, role, dept, photo });
+            }
+
+            localStorage.setItem('protrack_workers', JSON.stringify(workers));
+            closeModal('worker-modal');
+            document.getElementById('worker-form').reset();
+            document.getElementById('edit-worker-id').value = '';
+            clearWorkerPhotoPreview();
+            populateWorkerSelect();
+            renderWorkers();
+            renderDirectory();
+            showToast('Worker profile updated!', 'success');
+        }
+
+        function editWorker(id) {
+            const w = workers.find(item => item.id === id);
+            if (!w) return;
+            document.getElementById('edit-worker-id').value = w.id;
+            document.getElementById('worker-name').value = w.name;
+            document.getElementById('worker-role').value = w.role;
+            document.getElementById('worker-dept').value = w.dept;
+            document.getElementById('worker-photo').value = w.photo && w.photo.startsWith('http') ? w.photo : '';
+            document.getElementById('worker-photo-data').value = w.photo || '';
+            
+            if (w.photo) {
+                document.getElementById('worker-photo-preview').src = w.photo;
+                document.getElementById('worker-photo-preview-container').classList.remove('hidden');
+            } else {
+                clearWorkerPhotoPreview();
+            }
+            openModal('worker-modal');
+        }
+
+        function removeWorker(id) {
+            if (confirm('Are you sure you want to remove this personnel profile?')) {
+                const targetWorker = workers.find(w => w.id === id);
+                if (targetWorker) {
+                    // Remove worker's production records to sync all charts and totals
+                    records = records.filter(r => r.workerName !== targetWorker.name);
+                    localStorage.setItem('protrack_records', JSON.stringify(records));
+                }
+
+                workers = workers.filter(w => w.id !== id);
+                localStorage.setItem('protrack_workers', JSON.stringify(workers));
+                populateWorkerSelect();
+                renderWorkers();
+                renderDirectory();
+                renderDashboard();
+                renderTable();
+                showToast('Personnel and associated records removed from Dashboard', 'info');
+            }
+        }
+
+        // --- FLEET DATA & VEHICLES ---
+        function renderFleet() {
+            const grid = document.getElementById('fleet-grid');
+            if (!grid) return;
+
+            grid.innerHTML = fleetVehicles.map(f => {
+                const statusBadge = f.status === 'Active' ? 'bg-emerald-950 text-emerald-400 border-emerald-800' :
+                                    f.status === 'Standby' ? 'bg-amber-950 text-amber-400 border-amber-800' :
+                                    'bg-rose-950 text-rose-400 border-rose-800';
+                return `
+                    <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-3">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="font-bold text-slate-100 text-base">${f.name}</h3>
+                                <p class="text-xs font-mono text-cyan-400 font-bold">${f.plate}</p>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold border ${statusBadge}">${f.status}</span>
+                        </div>
+                        <div class="text-xs space-y-1 text-slate-300 pt-2 border-t border-slate-800">
+                            <p><span class="text-slate-500">Type:</span> ${f.type}</p>
+                            <p><span class="text-slate-500">Fuel:</span> ${f.fuel}</p>
+                            <p><span class="text-slate-500">Team Leader:</span> <strong class="text-slate-200">${f.leader}</strong></p>
+                        </div>
+                        <div class="pt-2 flex items-center justify-end gap-2">
+                            <button onclick="editFleet('${f.id}')" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl border border-slate-700 flex items-center gap-1 transition">
+                                <i class="fa-solid fa-pen"></i> Edit Vehicle
+                            </button>
+                            <button onclick="deleteFleet('${f.id}')" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-rose-950 hover:bg-rose-900 text-rose-300 px-3 py-1.5 rounded-xl border border-rose-800 flex items-center gap-1 transition">
+                                <i class="fa-solid fa-trash"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function handleSaveFleet(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-fleet-id').value;
+            const fleet = {
+                id: id || 'f_' + Date.now(),
+                name: document.getElementById('fleet-name').value,
+                plate: document.getElementById('fleet-plate').value,
+                type: document.getElementById('fleet-type').value,
+                fuel: document.getElementById('fleet-fuel').value,
+                leader: document.getElementById('fleet-leader').value,
+                status: document.getElementById('fleet-status').value
+            };
+
+            if (id) {
+                const idx = fleetVehicles.findIndex(f => f.id === id);
+                if (idx !== -1) fleetVehicles[idx] = fleet;
+            } else {
+                fleetVehicles.push(fleet);
+            }
+
+            localStorage.setItem('protrack_fleet', JSON.stringify(fleetVehicles));
+            closeModal('fleet-modal');
+            document.getElementById('fleet-form').reset();
+            document.getElementById('edit-fleet-id').value = '';
+            renderFleet();
+            showToast('Fleet vehicle details saved!', 'success');
+        }
+
+        function editFleet(id) {
+            const f = fleetVehicles.find(item => item.id === id);
+            if (!f) return;
+            document.getElementById('edit-fleet-id').value = f.id;
+            document.getElementById('fleet-name').value = f.name;
+            document.getElementById('fleet-plate').value = f.plate;
+            document.getElementById('fleet-type').value = f.type || '';
+            document.getElementById('fleet-fuel').value = f.fuel;
+            document.getElementById('fleet-leader').value = f.leader || '';
+            document.getElementById('fleet-status').value = f.status;
+            openModal('fleet-modal');
+        }
+
+        function deleteFleet(id) {
+            if (confirm('Delete this fleet vehicle entry?')) {
+                fleetVehicles = fleetVehicles.filter(f => f.id !== id);
+                localStorage.setItem('protrack_fleet', JSON.stringify(fleetVehicles));
+                renderFleet();
+                showToast('Vehicle removed from fleet', 'info');
+            }
+        }
+
+        // --- ANNOUNCEMENTS / ADVANCE UPDATES ---
+        function renderUpdates() {
+            const grid = document.getElementById('updates-grid');
+            if (!grid) return;
+
+            grid.innerHTML = teamUpdates.map(u => `
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 relative group flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-start gap-2">
+                            <h4 class="font-bold text-slate-100 text-sm">${u.title}</h4>
+                            <span class="text-[10px] text-slate-500 font-mono flex-shrink-0">${u.date}</span>
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed">${u.content}</p>
+                    </div>
+                    <div class="pt-3 border-t border-slate-900 flex justify-end items-center">
+                        <button onclick="deleteTeamUpdate('${u.id}')" class="admin-only ${isAdminMode ? '' : 'hidden'} text-xs bg-rose-950 hover:bg-rose-900 text-rose-300 font-semibold px-2.5 py-1 rounded-lg border border-rose-800 flex items-center gap-1.5 transition shadow-sm">
+                            <i class="fa-solid fa-trash-can text-[11px]"></i> Delete Update
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function handleSaveUpdate(e) {
+            e.preventDefault();
+            const update = {
+                id: 'u_' + Date.now(),
+                title: document.getElementById('update-title').value,
+                content: document.getElementById('update-content').value,
+                date: new Date().toISOString().split('T')[0]
+            };
+            teamUpdates.unshift(update);
+            localStorage.setItem('protrack_updates', JSON.stringify(teamUpdates));
+            closeModal('update-modal');
+            document.getElementById('update-form').reset();
+            renderUpdates();
+            showToast('Announcement posted!', 'success');
+        }
+
+        function deleteTeamUpdate(id) {
+            if (confirm('Delete this announcement?')) {
+                teamUpdates = teamUpdates.filter(u => u.id !== id);
+                localStorage.setItem('protrack_updates', JSON.stringify(teamUpdates));
+                renderUpdates();
+                showToast('Announcement removed', 'info');
+            }
+        }
+
+        // --- SATURDAY - SUNDAY WEEKEND SCHEDULE ---
+        function renderWeekendSchedule() {
+            const grid = document.getElementById('weekend-schedule-grid');
+            if (!grid) return;
+
+            const saturdaySlots = weekendSchedule.filter(s => s.day === 'Saturday');
+            const sundaySlots = weekendSchedule.filter(s => s.day === 'Sunday');
+
+            const renderColumn = (slots, dayLabel) => `
+                <div class="space-y-4">
+                    ${slots.map((s, idx) => `
+                        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col items-center justify-center relative min-h-[300px]">
+                            ${s.image ? `
+                                <div class="w-full h-[500px] sm:h-[650px] overflow-hidden rounded-xl bg-slate-900 border border-slate-800 relative group flex items-center justify-center">
+                                    <img src="${s.image}" class="w-full h-full object-contain">
+                                    <div class="admin-only ${isAdminMode ? '' : 'hidden'} absolute top-3 right-3 flex items-center gap-2">
+                                        <button onclick="openWeekendModalForSlot('${s.id}')" class="bg-slate-900/90 hover:bg-slate-800 text-slate-100 text-xs px-3 py-1.5 rounded-xl border border-slate-700 shadow">
+                                            Change Photo
+                                        </button>
+                                        <button onclick="removeWeekendPhoto('${s.id}')" class="bg-rose-950/90 hover:bg-rose-900 text-rose-300 text-xs px-3 py-1.5 rounded-xl border border-rose-800 shadow">
+                                            Remove Photo
+                                        </button>
+                                    </div>
+                                </div>
+                            ` : `
+                                <div onclick="${isAdminMode ? `openWeekendModalForSlot('${s.id}')` : ''}" class="w-full h-48 border-2 border-dashed border-slate-800 hover:border-purple-500/50 rounded-xl flex flex-col items-center justify-center p-6 text-center transition cursor-pointer">
+                                    <i class="fa-solid fa-cloud-arrow-up text-3xl text-slate-600 mb-2"></i>
+                                    <span class="text-xs font-semibold text-slate-400">Upload Schedule Photo</span>
+                                    <span class="text-[10px] text-slate-600 mt-1">${dayLabel} Snapshot</span>
+                                </div>
+                            `}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            grid.innerHTML = `
+                ${renderColumn(saturdaySlots, 'Saturday')}
+                ${renderColumn(sundaySlots, 'Sunday')}
+            `;
+        }
+
+        function openWeekendModalForSlot(id) {
+            const slot = weekendSchedule.find(s => s.id === id);
+            if (!slot) return;
+            document.getElementById('edit-weekend-id').value = slot.id;
+            document.getElementById('weekend-day').value = slot.day;
+            if (slot.image) {
+                document.getElementById('weekend-image-data').value = slot.image;
+                document.getElementById('weekend-image-preview').src = slot.image;
+                document.getElementById('weekend-image-preview-container').classList.remove('hidden');
+            } else {
+                clearWeekendImagePreview();
+            }
+            openModal('weekend-schedule-modal');
+        }
+
+        function previewWeekendImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('weekend-image-data').value = e.target.result;
+                    document.getElementById('weekend-image-preview').src = e.target.result;
+                    document.getElementById('weekend-image-preview-container').classList.remove('hidden');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function clearWeekendImagePreview() {
+            document.getElementById('weekend-image-input').value = '';
+            document.getElementById('weekend-image-data').value = '';
+            document.getElementById('weekend-image-preview').src = '';
+            document.getElementById('weekend-image-preview-container').classList.add('hidden');
+        }
+
+        function handleSaveWeekendSchedule(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-weekend-id').value;
+            const day = document.getElementById('weekend-day').value;
+            const imageData = document.getElementById('weekend-image-data').value;
+
+            const idx = weekendSchedule.findIndex(s => s.id === id);
+            if (idx !== -1) {
+                weekendSchedule[idx].day = day;
+                weekendSchedule[idx].image = imageData;
+            } else {
+                weekendSchedule.push({ id: 'w_' + Date.now(), day, image: imageData });
+            }
+
+            localStorage.setItem('protrack_weekend', JSON.stringify(weekendSchedule));
+            closeModal('weekend-schedule-modal');
+            renderWeekendSchedule();
+            showToast('Weekend schedule photo saved!', 'success');
+        }
+
+        function removeWeekendPhoto(id) {
+            const slot = weekendSchedule.find(s => s.id === id);
+            if (slot) {
+                slot.image = '';
+                localStorage.setItem('protrack_weekend', JSON.stringify(weekendSchedule));
+                renderWeekendSchedule();
+                showToast('Schedule photo removed', 'info');
+            }
+        }
+
+        // --- CSV EXPORTER ---
+        function exportToCSV() {
+            if (records.length === 0) {
+                showToast('No production logs to export', 'error');
+                return;
+            }
+            const headers = ['Date', 'Worker Name', 'Attendance', 'Installs', 'Restored', 'Total Units', 'Notes'];
+            const rows = records.map(r => [
+                `"${r.date}"`,
+                `"${r.workerName}"`,
+                `"${r.attendance}"`,
+                r.installs || 0,
+                r.restored || 0,
+                r.totalUnits || ((r.installs || 0) + (r.restored || 0)),
+                `"${(r.notes || '').replace(/"/g, '""')}"`
+            ]);
+
+            const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', `ProTrack_Production_Logs_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('CSV Export generated!', 'success');
+        }
+
+        // APP INITIALIZATION ON WINDOW LOAD
+        window.onload = function() {
+            renderTeamLogo();
+            populateWorkerSelect();
+            applyAdminUIState();
+            switchTab('dashboard');
+        };
+    </script>
+</body>
+</html>
